@@ -79,7 +79,7 @@ void WriteVTKData(vtkPolyData *data, string fn)
 {
   vtkPolyDataWriter *writer = vtkPolyDataWriter::New();
   writer->SetFileName(fn.c_str());
-  writer->SetInput(data);
+  writer->SetInputData(data);
   writer->Update();
 }
 vtkPolyData *ReadVoronoiOutput(
@@ -172,7 +172,7 @@ vtkPolyData *ReadVoronoiOutput(
       src.push_back(make_pair(ip1, ip2)); // TODO: is this numbering 0-based?
       }
 
-    delete ids;
+    delete[] ids;
     }
 
   // Create the vtk poly data
@@ -205,8 +205,8 @@ double ComputeAverageEdgeLength(vtkPolyData *poly)
     for(vtkIdType j = 0; j < nPoints; j++)
       {
       vtkIdType k = (j + 1) % nPoints;
-      vnl_vector_fixed<vtkFloatingPointType,3> x1(poly->GetPoint(xPoints[j]));
-      vnl_vector_fixed<vtkFloatingPointType,3> x2(poly->GetPoint(xPoints[k]));
+      vnl_vector_fixed<vtkFloatingPointType,3> x1((float*)poly->GetPoint(xPoints[j]));
+      vnl_vector_fixed<vtkFloatingPointType,3> x2((float*)poly->GetPoint(xPoints[k]));
       l += sqrt(dot_product(x1-x2,x1-x2));
       n++;
       }
@@ -238,9 +238,9 @@ void ComputeAreaElement(vtkPolyData *poly, vnl_vector<vtkFloatingPointType> &elt
       }
 
     // Get the three points
-    vnl_vector_fixed<vtkFloatingPointType, 3> X0(poly->GetPoint(xPoints[0]));
-    vnl_vector_fixed<vtkFloatingPointType, 3> X1(poly->GetPoint(xPoints[1]));
-    vnl_vector_fixed<vtkFloatingPointType, 3> X2(poly->GetPoint(xPoints[2]));
+    vnl_vector_fixed<vtkFloatingPointType, 3> X0((float*)poly->GetPoint(xPoints[0]));
+    vnl_vector_fixed<vtkFloatingPointType, 3> X1((float*)poly->GetPoint(xPoints[1]));
+    vnl_vector_fixed<vtkFloatingPointType, 3> X2((float*)poly->GetPoint(xPoints[2]));
 
     // Compute the area
     double xArea = TriangleArea(X0, X1, X2);
@@ -299,13 +299,13 @@ int usage()
 //int VoronoiSkeletonTool::execute(int argc, char *argv[])
 int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 {
-
   // Command line arguments
   string fnMesh, fnOutput, fnSkel, fnQVoronoi="qvoronoi", fnOutThickness;
   string fnImgRef, fnImgThick, fnImgDepth;
   double xPrune = 2.0, xSearchTol = 1e-6;
   int nComp = 0, nDegrees = 0, nRandSamp = 0, nBins = 0;
   bool flagGeodFull = false;
+
 
   // Check that there are at least three command line arguments
   if(argc < 3) return usage();
@@ -379,17 +379,29 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
   // The raw boundary must be triangulated and cleaned
   vtkTriangleFilter *fTriangle = vtkTriangleFilter::New();
-  fTriangle->SetInput(bndraw);
+  fTriangle->SetInputData(bndraw);
+  fTriangle->Update();
   vtkCleanPolyData *fClean = vtkCleanPolyData::New();
-  fClean->SetInput(fTriangle->GetOutput());
+  //fClean->SetInputData(fTriangle->GetOutput());
+  fClean->SetInputConnection(fTriangle->GetOutputPort());
   fClean->SetTolerance(1e-4);
   fClean->Update();
   vtkPolyData *bnd = fClean->GetOutput();
 
+  ////ERROR////
   // Create a bounding box object
-  bnd->GetPoints()->ComputeBounds();
-  double *bbBnd = bnd->GetPoints()->GetBounds();
-  printf("Bounding Box : %f %f %f %f %f %f\n", bbBnd[0], bbBnd[1], bbBnd[2], bbBnd[3], bbBnd[5], bbBnd[6]);
+ /* 
+  vtkPoints *temp = bnd->GetPoints();
+  std::cout << "test 1.33" << std::endl;
+  temp->Modified();
+  std::cout << "test 1.66" << std::endl;
+  temp->ComputeBounds(); //<--ERROR HERE
+  std::cout << "test 2" << std::endl;
+  */
+  double init = 0.0;
+  double *bbBnd = &init;
+  bnd->GetBounds(bbBnd);
+  printf("Bounding Box : %f %f %f %f %f %f\n", bbBnd[0], bbBnd[1], bbBnd[2], bbBnd[3], bbBnd[4], bbBnd[5]);
   vtkBoundingBox fBoundBox;
   fBoundBox.SetBounds(bbBnd);
 
@@ -422,7 +434,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
   // Load the numbers
   size_t nv, np, junk;
-  
+
   // First two lines
   fin >> junk;
   fin >> nv; 
@@ -540,13 +552,30 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
       double elen = dijkstra_edge.GetVertexDistance(ip2);
       if(elen < nDegrees)
         { pruned = true; npruned_edge++; }
-      else
-        {
-        // Get the Euclidean distance between generator points
-        vnl_vector_fixed<vtkFloatingPointType,3> p1(bnd->GetPoint(ip1)); 
-        vnl_vector_fixed<vtkFloatingPointType,3> p2(bnd->GetPoint(ip2)); 
-        r = (p1 - p2).magnitude();
-        
+	  else
+	  {
+		  // Get the Euclidean distance between generator points
+		  double ipDb1[3];
+		  double ipDb2[3];
+		  float ipFt1[3];
+		  float ipFt2[3];
+		  bnd->GetPoint(ip1, ipDb1);
+		  bnd->GetPoint(ip2, ipDb2);
+		  for (int i = 0; i < 3; i++)
+		  {
+			  ipFt1[i] = (float)ipDb1[i];
+			  ipFt2[i] = (float)ipDb2[i];
+		  }
+
+		  /*vnl_vector_fixed<vtkFloatingPointType,3> p1((float*)bnd->GetPoint(ip1));
+		  vnl_vector_fixed<vtkFloatingPointType, 3> p2((float*)bnd->GetPoint(ip2));*/
+		  vnl_vector_fixed<float, 3>p1(ipFt1);
+		  vnl_vector_fixed<float, 3>p2(ipFt2);
+		  r = (p1 - p2).magnitude();
+		  /*std::cout << "p1: " << p1[0] << " " << p1[1] << " " << p1[2] << std::endl;
+		  std::cout << "p2: " << p2[0] << " " << p2[1] << " " << p2[2] << std::endl;
+		  std::cout << "r: " << r << std::endl;*/
+
         // The geodesic distance between generators should exceed d * xPrune;
         dijkstra_geo.ComputeDistances(ip1, r * xPrune + 1);
 
@@ -555,7 +584,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
         // If the geodesic is too short, don't insert point
         if(dgeo < r * xPrune)
-          { pruned = true; npruned_geo++; }
+			{pruned = true; npruned_geo++; }
         }
 
       if(!pruned)
@@ -579,7 +608,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
       next_prog_mark += np / 50;
       }
 
-    delete ids;
+    delete[] ids;
     }
 
   cout << "." << endl;
@@ -607,7 +636,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
   // Drop the singleton points from the diagram (points not in any cell)
   vtkCleanPolyData *fltClean = vtkCleanPolyData::New();
-  fltClean->SetInput(skel);
+  fltClean->SetInputData(skel);
   fltClean->Update();
   cout << "Clean filter: trimmed " 
     << skel->GetNumberOfPoints() << " vertices to "
@@ -621,7 +650,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
   if(nComp > 0)
     {
     vtkPolyDataConnectivityFilter *fltConnect = vtkPolyDataConnectivityFilter::New();
-    fltConnect->SetInput(fltClean->GetOutput());
+    fltConnect->SetInputData(fltClean->GetOutput());
 
     if(nComp == 1)
       fltConnect->SetExtractionModeToLargestRegion();
@@ -639,7 +668,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
     // Don't see why this is necessary, but Connectivity filter does not remove points,
     // just faces. So we need another clear filter
     vtkCleanPolyData *fltWhy = vtkCleanPolyData::New();
-    fltWhy->SetInput(fltConnect->GetOutput());
+    fltWhy->SetInputData(fltConnect->GetOutput());
     fltWhy->Update();
 
     cout << "Connected component constraint pruned " 
@@ -650,24 +679,47 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
   // Convert the cell data to point data
   vtkCellDataToPointData *c2p = vtkCellDataToPointData::New();
-  c2p->SetInput(polySave);
+  c2p->SetInputData(polySave);
   c2p->PassCellDataOn();
   c2p->Update();
   vtkPolyData *final = c2p->GetPolyDataOutput();
 
   // Compute mean, median thickness?
-  double int_area = 0, int_thick = 0;
+  double int_area = 0.0, int_thick = 0.0;
   vtkDataArray *finalRad = final->GetCellData()->GetArray("Radius");
-  for(int i = 0; i < final->GetNumberOfCells(); i++)
+  for(vtkIdType i = 0; i < final->GetNumberOfCells(); i++)
     {
     double r = finalRad->GetTuple1(i);
+	//std::cout << "r: " << r << std::endl;
     vtkCell *c = final->GetCell(i);
     if(c->GetNumberOfPoints() == 3)
       {
-      vnl_vector_fixed<vtkFloatingPointType, 3> p1(final->GetPoint(c->GetPointId(0)));
-      vnl_vector_fixed<vtkFloatingPointType, 3> p2(final->GetPoint(c->GetPointId(1)));
-      vnl_vector_fixed<vtkFloatingPointType, 3> p3(final->GetPoint(c->GetPointId(2)));
+		vtkIdType p1Id = c->GetPointId(0);
+		vtkIdType p2Id = c->GetPointId(1);
+		vtkIdType p3Id = c->GetPointId(2);
+		double p1d[3];
+		double p2d[3];
+		double p3d[3];
+		float p1f[3];
+		float p2f[3];
+		float p3f[3];
+		final->GetPoint(p1Id, p1d);
+		final->GetPoint(p2Id, p2d);
+		final->GetPoint(p3Id, p3d);
+		for (int i = 0; i < 3; i++)
+		{
+			p1f[i] = (float)p1d[i];
+			p2f[i] = (float)p2d[i];
+			p3f[i] = (float)p3d[i];
+		}
+      /*vnl_vector_fixed<vtkFloatingPointType, 3> p1((float*)final->GetPoint(c->GetPointId(0)));
+      vnl_vector_fixed<vtkFloatingPointType, 3> p2((float*)final->GetPoint(c->GetPointId(1)));
+      vnl_vector_fixed<vtkFloatingPointType, 3> p3((float*)final->GetPoint(c->GetPointId(2)));*/
+	  vnl_vector_fixed<float, 3> p1(p1f);
+	  vnl_vector_fixed<float, 3> p2(p2f);
+	  vnl_vector_fixed<float, 3> p3(p3f);
       double a = fabs(TriangleArea(p1, p2, p3));
+	  //std::cout << "a: " << a << std::endl;
       int_area += a;
       int_thick += r * a;
       }
@@ -681,7 +733,9 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
   if(nBins > 0)
     {
     // Calculate appropriate bin size
-    double *bbBnd = skelfinal->GetPoints()->GetBounds();
+    //double *bbBnd = skelfinal->GetPoints()->GetBounds();
+	double *bbBnd = &init;
+	skelfinal->GetBounds(bbBnd);
     vtkBoundingBox fbb;
     fbb.SetBounds(bbBnd);
     double binsize = fbb.GetMaxLength() / nBins;
@@ -691,7 +745,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
       ceil(fbb.GetLength(0) / binsize), 
       ceil(fbb.GetLength(1) / binsize),
       ceil(fbb.GetLength(2) / binsize));
-    fCluster->SetInput(c2p->GetPolyDataOutput());
+    fCluster->SetInputData(c2p->GetPolyDataOutput());
     fCluster->SetCopyCellData(1);
     fCluster->Update();
 
@@ -708,7 +762,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
     // Convert cell data to point data again
     vtkCellDataToPointData *c2p = vtkCellDataToPointData::New();
-    c2p->SetInput(fCluster->GetOutput());
+    c2p->SetInputData(fCluster->GetOutput());
     c2p->PassCellDataOn();
     c2p->Update();
     skelfinal = c2p->GetPolyDataOutput();
@@ -750,7 +804,7 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 
     // Write thickness map
     WriteVTKData(bnd, fnOutThickness);
-    } 
+    }
 
   if(fnImgRef.length() && fnImgThick.length())
     {
@@ -846,11 +900,11 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
     {
     // Convert the mesh to triangles
     vtkTriangleFilter *fltTri = vtkTriangleFilter::New();
-    fltTri->SetInput(skelfinal);
+    fltTri->SetInputData(skelfinal);
 
     // Clean the mesh
     vtkCleanPolyData *fltClean = vtkCleanPolyData::New();
-    fltClean->SetInput(fltTri->GetOutput());
+    fltClean->SetInputData(fltTri->GetOutput());
     fltClean->Update();
     vtkPolyData *xMesh = fltClean->GetOutput();
     xMesh->BuildCells();
@@ -957,9 +1011,11 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
     // vnl_matlab_filewrite exporter2(argv[2]);
     // exporter2.write(mCoord, "xyz");
 
-    delete xLandmarks;
-    delete row_index;
-    delete col_index;
+    delete[] xLandmarks;
+    delete[] row_index;
+    delete[] col_index;
+	
     }
+  return 0;
 }
 

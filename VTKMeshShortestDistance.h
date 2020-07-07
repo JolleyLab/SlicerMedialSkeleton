@@ -190,7 +190,7 @@ public:
     vtkFloatingPointType dist2;
     
     fltCellLocator->FindClosestPoint(
-      v1.data_block(), v2.data_block(),iCell,subid,dist2);
+      (double*)v1.data_block(), (double*)v2.data_block(),iCell,subid,(double&)dist2);
     return iCell;
     }
 

@@ -69,7 +69,7 @@ EventQtSlotConnect::EventQtSlotConnect()
 
   mouseInteractor = vtkSmartPointer<MouseInteractor>::New();
 
-  iniTriLabel();
+  //iniTriLabel();
 
   this->cmrep_progressBar->setMinimum(0);
   this->cmrep_progressBar->setMaximum(100);
@@ -93,10 +93,14 @@ EventQtSlotConnect::EventQtSlotConnect()
   createMenus();
 
   pointColor[0] = 1; pointColor[1] = 0; pointColor[2] = 0;
-  //Progress bar
-  this->connect(&this->FutureWatcher, SIGNAL(finished()), this, SLOT(slot_finished()));
 
-  //Excute teh cmrepskel
+  //Path browse button
+  this->connect(this->pushButtonQvoronoi, SIGNAL(clicked()), this, SLOT(browsePath()));
+
+  //Progress bar
+  this->connect(&FutureWatcher, SIGNAL(finished()), this, SLOT(slot_finished()));
+
+  //Excute the cmrepskel
   this->connect(this->cmrepVskel, SIGNAL(clicked()), this, SLOT(executeCmrepVskel()));
 
   //Mesh interaction
@@ -108,18 +112,19 @@ EventQtSlotConnect::EventQtSlotConnect()
   this->connect(this->comboBoxTagPoint, SIGNAL(activated(int)), this, SLOT(slot_comboxChanged(int)));
   this->connect(this->pushButtonDeleteTag, SIGNAL(clicked()), this, SLOT(slot_delTag()));
   this->connect(this->pushButtonEditTag, SIGNAL(clicked()), this, SLOT(slot_editTag()));
-  
+
+  this->connect(this->pushButtonAddLabel, SIGNAL(clicked()), this, SLOT(slot_addLabel()));
+  this->connect(this->pushButtonDeleteLabel, SIGNAL(clicked()), this, SLOT(slot_delLabel()));
+  this->connect(this->pushButtonEditLabel, SIGNAL(clicked()), this, SLOT(slot_editLabel()));
+  this->connect(this->ChangePtLabelToolButton, SIGNAL(clicked()), this, SLOT(slot_changePtLabel()));
+
   //Saving option
   this->connect(this->GridTypeComboBox, SIGNAL(activated(int)), this, SLOT(slot_gridTypeChanged(int)));
   this->connect(this->SolverTypeComboBox, SIGNAL(activated(int)), this, SLOT(slot_solverTypeChanged(int)));
   this->connect(this->ConsRadiusCheckBox, SIGNAL(stateChanged(int)), this, SLOT(slot_consRadiusCheck(int)));
 
-  //Decimation
-  this->connect(this->TargetReductSlider, SIGNAL(valueChanged(int)), this, SLOT(slot_targetReductSilder(int)));
-  this->connect(this->TargetReductLineEdit, SIGNAL(textChanged(QString)), this, SLOT(slot_targetReductEditor(QString)));
-  this->connect(this->FeatureAngleSlider, SIGNAL(valueChanged(int)), this, SLOT(slot_featureAngleSlider(int)));
-  this->connect(this->FeatureAngleLineEdit, SIGNAL(textChanged(QString)), this, SLOT(slot_feartureAngleEditor(QString)));
-  this->connect(this->ApplyDecimateButton, SIGNAL(clicked()), this, SLOT(slot_decimateButton()));
+  //Toggle triangle labels button
+  this->connect(this->pushButtonToggleTri, SIGNAL(clicked()), this, SLOT(slot_toggleTriLabel()));
 
   //Change tag radius/size
   this->connect(this->TagSizeSlider, SIGNAL(valueChanged(int)), this, SLOT(slot_tagSizeSlider(int)));
@@ -147,25 +152,22 @@ EventQtSlotConnect::EventQtSlotConnect()
 
   //transparent Slider
   this->connect(this->SkelTransparentSlider, SIGNAL(valueChanged(int)), this, SLOT(slot_skelTransparentChanged(int)));
+  this->connect(this->MeshTransparentSlider, SIGNAL(valueChanged(int)), this, SLOT(slot_meshTransparentChanged(int)));
 
   //triangle label
   this->connect(this->TriLabelComboBox, SIGNAL(activated(int)), this, SLOT(slot_trilabelChanged(int)));
 
-  //hide some options on cmrep_vskel
-  this->label_7->hide();
-  this->label_8->hide();
-  this->label_9->hide();
-  this->label_10->hide();
-  this->sParameter->hide();
-  this->RParameter->hide();
-  this->TParameter->hide();
-  this->IParameter->hide();
+  //background color
+  this->connect(this->pushButtonBckgndColor, SIGNAL(clicked()), this, SLOT(slot_setColor()));
 
   //set some default value
   this->eParameter->setValue(2);
   this->pParameter->setValue(1.2);
   this->cParameter->setValue(0);
   this->tParameter->setValue(1e-6);
+  colorBckgnd.setRed(0);
+  colorBckgnd.setGreen(0);
+  colorBckgnd.setBlue(1);
 
   settingsFile = QApplication::applicationDirPath() + "/settings.ini";
   loadSettings(); 
@@ -174,6 +176,7 @@ EventQtSlotConnect::EventQtSlotConnect()
 	  vtkSmartPointer<vtkRenderer>::New();
   this->qvtkWidget->GetRenderWindow()->AddRenderer(renderer);
   this->qvtkWidget->update();
+
 };
 
 EventQtSlotConnect::~EventQtSlotConnect()
@@ -200,7 +203,7 @@ void EventQtSlotConnect::slot_addTag(){
 		b = addDialog.color.blue();
 		//ti.tagColor[0] = ((double) std::rand() / (RAND_MAX)); ti.tagColor[1] = ((double) std::rand() / (RAND_MAX)); ti.tagColor[2] = ((double) std::rand() / (RAND_MAX));
 		ti.tagColor[0] = r; ti.tagColor[1] = g; ti.tagColor[2] = b;
-		if(addDialog.branchButton->isChecked())
+		if (addDialog.branchButton->isChecked()) 
 			ti.tagType = 1;
 		else if(addDialog.freeEdgeButton->isChecked())
 			ti.tagType = 2;
@@ -222,19 +225,20 @@ void EventQtSlotConnect::slot_addTag(){
 
 void EventQtSlotConnect::slot_delTag()
 {
-	if(Global::vectorTagPoints.size() != 0){
+	if(Global::vectorTagInfo.size() != 0){
 		int curIndex = this->comboBoxTagPoint->currentIndex();
+		QString tagName = this->comboBoxTagPoint->currentText();
 		for(int i = 0; i < Global::vectorTagPoints.size(); i++)
 		{
 			if(curIndex == Global::vectorTagPoints[i].comboBoxIndex)
 			{
 				QMessageBox messageBox;
-				messageBox.critical(0,"Error","You need to delete these points in skeleton before deletion");
+				messageBox.critical(0,"Error","You need to delete the remaining point(s) before deleting this tag: " + tagName);
 				return;
 			}
 		}
 		switch( QMessageBox::information( this, "Delete Tag",
-			"Are you sure to delete this tag? ",
+			"Are you sure to delete this tag (" + tagName + ")? ",
 			"Yes", "Cancel",
 			0, 1 ) ) {
 		case 0:
@@ -245,8 +249,14 @@ void EventQtSlotConnect::slot_delTag()
 			break;
 		case 1:
 		default:
-			break;
+			break;	
 		}	
+	}
+	else
+	{
+		QMessageBox warning;
+		warning.critical(0, "Warning", "No existing tag");
+		return;
 	}
 }
 
@@ -322,6 +332,140 @@ void EventQtSlotConnect::slot_editTag()
 	}
 }
 
+void EventQtSlotConnect::slot_addLabel()
+{
+	AddLabelDialog addLabel;
+    addLabel.show();
+
+    if(addLabel.exec()){
+
+		LabelTriangle lt;
+
+		QPixmap pix(22, 22);
+		QColor qc = addLabel.color;
+		int index = addLabel.index->text().toInt();
+		QString labelText = addLabel.nameEdit->text();
+
+		lt.labelName = addLabel.nameEdit->text().toStdString();
+		lt.labelColor = qc;
+		Global::vectorLabelInfo.push_back(lt);
+
+		triLabelColors.push_back(qc);
+		hideTriLabel.push_back(0);
+		mouseInteractor->triLabelColors.push_back(qc);
+
+		if (index-1 == 0) {
+			Global::triCol[0] = qc.red() / 255.0;
+			Global::triCol[1] = qc.green() / 255.0;
+			Global::triCol[2] = qc.blue() / 255.0;
+			mouseInteractor->currentTriIndex = index-1;
+		}
+		pix.fill(qc);
+		this->TriLabelComboBox->addItem(pix, labelText);
+    }
+}
+
+void EventQtSlotConnect::slot_delLabel()
+{
+	std::cout << Global::vectorLabelInfo.size() << std::endl;
+	if (Global::vectorLabelInfo.size() != 0) {
+		int curIndex = this->TriLabelComboBox->currentIndex();
+		QString labelName = this->TriLabelComboBox->currentText();
+		for (int i = 0; i < Global::vectorTagTriangles.size(); i++) {
+			if (curIndex == Global::vectorTagTriangles[i].index)
+			{
+				QMessageBox messageBox;
+				messageBox.critical(0, "Error", "You need to delete the remaining triangle(s) before deleting this label: " + labelName);
+				return;
+			}
+		}
+		
+		switch (QMessageBox::information(this, "Delete Label",
+			"Are you sure to delete this tag ("+ labelName+")? ",
+			"Yes", "Cancel",
+			0, 1)) {
+		case 0:
+		{
+			Global::vectorLabelInfo.erase(Global::vectorLabelInfo.begin() + curIndex);
+			this->TriLabelComboBox->removeItem(curIndex);
+			triLabelColors.erase(triLabelColors.begin() + curIndex);
+			hideTriLabel.erase(hideTriLabel.begin() + curIndex);
+			mouseInteractor->triLabelColors.erase(mouseInteractor->triLabelColors.begin() + curIndex);
+			int newIndex = this->TriLabelComboBox->currentIndex();
+			mouseInteractor->currentTriIndex = newIndex;
+			break;
+		}
+		case 1:
+		default:
+			break;
+		}
+	}
+	else
+	{
+		QMessageBox warning;
+		warning.critical(0, "Warning", "No existing label");
+		return;
+	}
+}
+
+void EventQtSlotConnect::slot_editLabel()
+{
+	if (Global::vectorLabelInfo.size() > 0)
+	{
+		AddLabelDialog addLabel;
+		int curIndex = TriLabelComboBox->currentIndex();
+		LabelTriangle lto = Global::vectorLabelInfo[curIndex];
+
+		addLabel.nameEdit->setText(QString::fromStdString(lto.labelName));
+		addLabel.color = lto.labelColor;
+		addLabel.colorLabel->setPalette(QPalette(lto.labelColor));
+		addLabel.colorLabel->setAutoFillBackground(true);
+		addLabel.index->setText(QString::number(curIndex + 1));
+
+		addLabel.show();
+		if (addLabel.exec())
+		{
+			QString labelText = addLabel.nameEdit->text();
+			QColor labelColor = addLabel.color;
+			
+			LabelTriangle lt;
+			lt.labelName = labelText.toStdString();
+			lt.labelColor = labelColor;
+
+			Global::vectorLabelInfo[curIndex] = lt;
+
+			triLabelColors[curIndex] = labelColor;
+			mouseInteractor->triLabelColors[curIndex] = labelColor;
+
+			for (int i = 0; i < Global::vectorTagTriangles.size(); i++) 
+			{
+				if (Global::vectorTagTriangles[i].index == curIndex)
+				{
+					Global::vectorTagTriangles[i].triActor->GetProperty()->SetColor(
+						labelColor.red() / 255.0,
+						labelColor.green() / 255.0,
+						labelColor.blue() / 255.0);
+				}
+			}
+
+			QPixmap pix(22, 22);
+			pix.fill(labelColor);
+			this->TriLabelComboBox->removeItem(curIndex);
+			this->TriLabelComboBox->insertItem(curIndex, pix, labelText);
+		}
+	}
+}
+
+void EventQtSlotConnect::slot_changePtLabel()
+{
+    mouseInteractor->operationFlag = EDITTAGPT;
+    this->OperationModelLabel->setText("Change Point Label");
+    setToolButton(EDITTAGPT);
+    mouseInteractor->preKey = "";
+    mouseInteractor->reset();
+
+}
+
 void EventQtSlotConnect::slot_finished()
 {
 	readVTK(VTKfilename);
@@ -330,6 +474,16 @@ void EventQtSlotConnect::slot_finished()
 	this->cmrep_progressBar->setValue(0);
 	progressSignalCount = 0;
 	//this->cmrep_progressBar->hide();
+}
+
+void EventQtSlotConnect::browsePath()
+{
+	QString directory =
+		QDir::toNativeSeparators(QFileDialog::getOpenFileName(this, tr("Qvoronoi path"), QDir::currentPath()));
+
+	if (!directory.isEmpty()) {
+		this->pathQvoronoi->setText(directory);
+	}
 }
 
 void EventQtSlotConnect::slot_open(){
@@ -347,7 +501,7 @@ void EventQtSlotConnect::slot_save(){
 	//	options |= QFileDialog::DontUseNativeDialog;
 	QString selectedFilter;
 	QString fileName = QFileDialog::getSaveFileName(this,
-		tr("QFileDialog::getSaveFileName()"),
+		tr("Save File"),
 		tr(""),
 		tr("VTK Files (*.vtk)"),
 		&selectedFilter,
@@ -358,6 +512,56 @@ void EventQtSlotConnect::slot_save(){
 		saveVTKFile(fileName);
 		saveParaViewFile(fileName);
 		saveCmrepFile(fileName);	
+	}
+}
+
+void EventQtSlotConnect::slot_import()
+{
+	importNiftiiWindow inw;
+	inw.show();
+	if (inw.exec())
+	{
+		std::vector<std::string> filenames;
+		filenames.push_back(inw.inputEdit->text().toStdString());
+		filenames.push_back(inw.outputEdit->text().toStdString());
+
+		std::cout << "Input filename: " << filenames[0] << "\nOutput filename: " << filenames[1] << std::endl;
+		if (inw.smoothCheck->isChecked()) 
+		{
+			std::string sigma = inw.sigmaEdit->text().toStdString();
+
+			std::vector<std::string> th1Param;
+
+			std::string u11Temp = inw.u11->text().toStdString();
+			std::transform(u11Temp.begin(), u11Temp.end(), u11Temp.begin(), ::tolower);
+			std::string u21Temp = inw.u21->text().toStdString();
+			std::transform(u21Temp.begin(), u21Temp.end(), u21Temp.begin(), ::tolower);
+
+			th1Param.push_back(u11Temp);
+			th1Param.push_back(u21Temp);
+			th1Param.push_back(inw.v11->text().toStdString());
+			th1Param.push_back(inw.v21->text().toStdString());
+
+			std::vector<std::string> th2Param;
+
+			std::string u12Temp = inw.u12->text().toStdString();
+			std::transform(u12Temp.begin(), u12Temp.end(), u12Temp.begin(), ::tolower);
+			std::string u22Temp = inw.u22->text().toStdString();
+			std::transform(u22Temp.begin(), u22Temp.end(), u22Temp.begin(), ::tolower);
+
+			th2Param.push_back(u12Temp);
+			th2Param.push_back(u22Temp);
+			th2Param.push_back(inw.v12->text().toStdString());
+			th2Param.push_back(inw.v22->text().toStdString());
+
+			std::cout << "\nSigma value: " << sigma << " vox" << std::endl;
+			std::cout << "\nPre-thresholding parameters: \nu1: " << th1Param[0] << " u2: " << th1Param[1] << " v1: " << th1Param[2] << " v2: " << th1Param[3] << std::endl;
+			std::cout << "\nPost-thresholding parameters: \nu1: " << th2Param[0] << " u2: " << th2Param[1] << " v1: " << th2Param[2] << " v2: " << th2Param[3] << std::endl;
+
+			importNIFTI(filenames, true, sigma, th1Param, th2Param);
+		}
+		else
+			importNIFTI(filenames, false);
 	}
 }
 
@@ -389,6 +593,7 @@ void EventQtSlotConnect::slot_meshStateChange(int state){
 		mouseInteractor->meshState = SHOW;
 		for(int i = 0; i < Global::vectorTagTriangles.size(); i++)
 		{
+			hideTriLabel[i] = 0;
 			Global::vectorTagTriangles[i].triActor->VisibilityOn();
 		}
 	}
@@ -398,6 +603,7 @@ void EventQtSlotConnect::slot_meshStateChange(int state){
 		mouseInteractor->meshState = HIDE;
 		for(int i = 0; i < Global::vectorTagTriangles.size(); i++)
 		{
+			hideTriLabel[i] = 1;
 			Global::vectorTagTriangles[i].triActor->VisibilityOff();
 		}
 	}
@@ -406,7 +612,7 @@ void EventQtSlotConnect::slot_meshStateChange(int state){
 
 void EventQtSlotConnect::slot_comboxChanged(int state)
 {
-	Global::selectedTag = this->comboBoxTagPoint->currentIndex();
+    Global::selectedTag = this->comboBoxTagPoint->currentIndex();
 }
 
 void EventQtSlotConnect::slot_gridTypeChanged(int state)
@@ -433,31 +639,34 @@ void EventQtSlotConnect::slot_consRadiusCheck(int state)
 		this->RadiusLineEdit->setEnabled(false);
 }
 
-void EventQtSlotConnect::slot_targetReductSilder(int value)
+void EventQtSlotConnect::slot_toggleTriLabel() 
 {
-	this->TargetReductLineEdit->setText(QString::number(value/100.0));
-}
+    ToggleTriLabel toggleTriLabel(hideTriLabel);
+    toggleTriLabel.show();
 
-void EventQtSlotConnect::slot_targetReductEditor(QString text)
-{
-	this->TargetReductSlider->setValue(text.toDouble() * 100);
-}
+    if (toggleTriLabel.exec()) {
+		for (int i = 0; i < Global::vectorLabelInfo.size(); i++) {
+			if (toggleTriLabel.listCheckBox[i]->isChecked()) {
+				hideTriLabel[i] = 1;
+				this->TriLabelComboBox->setItemText(i, QString::fromStdString(Global::vectorLabelInfo[i].labelName + " (hidden)"));
+			}
+			else {
+				hideTriLabel[i] = 0;
+				this->TriLabelComboBox->setItemText(i, QString::fromStdString(Global::vectorLabelInfo[i].labelName));
+			}
+		}
+	}
 
-void EventQtSlotConnect::slot_featureAngleSlider(int value)
-{
-	this->FeatureAngleLineEdit->setText(QString::number(value));
-}
-
-void EventQtSlotConnect::slot_feartureAngleEditor(QString text)
-{
-	this->FeatureAngleSlider->setValue(text.toDouble());
-}
-
-void EventQtSlotConnect::slot_decimateButton()
-{
-	targetReduction = this->TargetReductLineEdit->text().toDouble();
-	featureAngle = this->FeatureAngleLineEdit->text().toDouble();
-	Decimate();
+	for (int i = 0; i < Global::vectorTagTriangles.size(); i++) {
+		int triIndex = Global::vectorTagTriangles[i].index;
+		if (hideTriLabel[triIndex] == 1) {
+			Global::vectorTagTriangles[i].triActor->VisibilityOff();
+		}
+		else {
+			Global::vectorTagTriangles[i].triActor->VisibilityOn();
+		}
+	}
+	this->qvtkWidget->GetRenderWindow()->Render();
 }
 
 void EventQtSlotConnect::slot_tagSizeSlider(int value)
@@ -476,7 +685,6 @@ void EventQtSlotConnect::slot_tagSizeSlider(int value)
 	this->qvtkWidget->update();
 }
 
-
 //Enable and disable tool button
 void EventQtSlotConnect::setToolButton(int flag)
 {
@@ -489,6 +697,7 @@ void EventQtSlotConnect::setToolButton(int flag)
 	this->FlipNormalToolButton->setEnabled(true);
 	this->ChangeTriLabelButton->setEnabled(true);
 	this->MovePtToolButton->setEnabled(true);
+    this->ChangePtLabelToolButton->setEnabled(true);
 
 	if(flag == ADDPOINT)
 		this->AddPointToolButton->setEnabled(false);
@@ -506,17 +715,28 @@ void EventQtSlotConnect::setToolButton(int flag)
 		this->ChangeTriLabelButton->setEnabled(false);
 	else if(flag == MOVEPT)
 		this->MovePtToolButton->setEnabled(false);
+    else if(flag == EDITTAGPT)
+        this->ChangePtLabelToolButton->setEnabled(false);
 
 	this->qvtkWidget->update();
 }
 
 void EventQtSlotConnect::slot_addPoint()
 {
-	mouseInteractor->operationFlag = ADDPOINT;
-	this->OperationModelLabel->setText("Add Point");
-	setToolButton(ADDPOINT);
-	mouseInteractor->preKey = "";
-	mouseInteractor->reset();
+	if (Global::vectorTagInfo.size() == 0)
+	{
+		QMessageBox warning;
+		warning.critical(0, "Warning", "You need to create a point label before creating a point");
+		return;
+	}
+	else
+	{
+		mouseInteractor->operationFlag = ADDPOINT;
+		this->OperationModelLabel->setText("Add Point");
+		setToolButton(ADDPOINT);
+		mouseInteractor->preKey = "";
+		mouseInteractor->reset();
+	}
 }
 
 void EventQtSlotConnect::slot_deletePoint()
@@ -530,11 +750,20 @@ void EventQtSlotConnect::slot_deletePoint()
 
 void EventQtSlotConnect::slot_createTri()
 {
-	mouseInteractor->operationFlag = CREATETRI;
-	this->OperationModelLabel->setText("Create Triangle");
-	setToolButton(CREATETRI);
-	mouseInteractor->preKey = "";
-	mouseInteractor->reset();
+	if (Global::vectorLabelInfo.size() == 0)
+	{
+		QMessageBox warning;
+		warning.critical(0, "Warning", "You need to create a triangle label before creating a triangle");
+		return;
+	}
+	else
+	{
+		mouseInteractor->operationFlag = CREATETRI;
+		this->OperationModelLabel->setText("Add Triangle");
+		setToolButton(CREATETRI);
+		mouseInteractor->preKey = "";
+		mouseInteractor->reset();
+	}
 }
 
 void EventQtSlotConnect::slot_deleteTri()
@@ -589,7 +818,7 @@ void EventQtSlotConnect::slot_updateOperation(int state)
 	else if(state == DELETEPOINT)
 		this->OperationModelLabel->setText("Delete Point");
 	else if(state == CREATETRI)
-		this->OperationModelLabel->setText("Create Triangle");
+		this->OperationModelLabel->setText("Add Triangle");
 	else if(state == DELETETRI)
 		this->OperationModelLabel->setText("Delete Triangle");
 	else if(state == FLIPNORMAL)
@@ -618,11 +847,19 @@ void EventQtSlotConnect::slot_skelTransparentChanged(int value)
 	vtkActor* actor = actorcollection->GetNextActor();
 	if(actor != NULL){
 		double trans = value / 100.0;
-		if(trans == 0.98 || trans == 0.99)
-			trans = 1.0;
 		actor->GetProperty()->SetOpacity(trans);
 		this->qvtkWidget->update();
 	}
+}
+
+void EventQtSlotConnect::slot_meshTransparentChanged(int value)
+{
+	double trans = value / 100.0;
+	for (int i = 0; i < Global::vectorTagTriangles.size(); i++)
+	{
+		Global::vectorTagTriangles[i].triActor->GetProperty()->SetOpacity(trans);
+	}
+	this->qvtkWidget->update();
 }
 
 void EventQtSlotConnect::slot_trilabelChanged(int index)	
@@ -631,8 +868,19 @@ void EventQtSlotConnect::slot_trilabelChanged(int index)
 	Global::triCol[0] = triLabelColors[curIndex].red() / 255.0;
 	Global::triCol[1] = triLabelColors[curIndex].green() / 255.0;
 	Global::triCol[2] = triLabelColors[curIndex].blue() / 255.0;
-
 	mouseInteractor->currentTriIndex = curIndex;
+}
+
+void EventQtSlotConnect::slot_setColor()
+{
+    colorBckgnd = QColorDialog::getColor(Qt::green, this, "Select Color", QColorDialog::DontUseNativeDialog);
+    vtkSmartPointer<vtkRenderer> renderer =
+        vtkSmartPointer<vtkRenderer>::New();
+    if (colorBckgnd.isValid()) {
+        if(this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer() != NULL)
+            this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->SetBackground(colorBckgnd.red()/255.0,colorBckgnd.green()/255.0,colorBckgnd.blue()/255.0);
+            this->qvtkWidget->update();
+    }
 }
 
 void EventQtSlotConnect::executeCmrepVskel()
@@ -640,8 +888,7 @@ void EventQtSlotConnect::executeCmrepVskel()
 	std::vector <char *> parameters;
 	parameters.push_back("cmrep_vskel");
 	
-	QString pathTextQ = this->pathParameter->text();
-	std::string pathText = pathTextQ.toStdString();
+	std::string pathText = this->pathQvoronoi->text().toStdString();
 	if(!pathText.empty()){
 		parameters.push_back("-Q");
 		char *temp = new char[256];
@@ -652,12 +899,12 @@ void EventQtSlotConnect::executeCmrepVskel()
 	int evalue = this->eParameter->value();
 	if(evalue != 0){
 		parameters.push_back("-e");
-		//char *temp = new char;
-		//itoa(evalue, temp, 10);
-		char temp[256];
-		sprintf(temp, "%d", evalue);
+		char *temp = new char[256];
+		std::stringstream ss;
+		ss << evalue;
+		std::string tempS = ss.str();
+		strcpy(temp, tempS.c_str());
 		parameters.push_back(temp);
-		//delete temp;
 	}
 
 	double pvalue = this->pParameter->value();
@@ -669,70 +916,23 @@ void EventQtSlotConnect::executeCmrepVskel()
 		std::string tempS = ss.str();
 		strcpy(temp, tempS.c_str());
 		parameters.push_back(temp);
-		//delete temp;
 	}
 
 	int cvalue = this->cParameter->value();
 	if(cvalue != 0){
 		parameters.push_back("-c");
-		//char *temp = new char;
-		//itoa(cvalue, temp, 10);
 		char temp[256];
 		sprintf(temp, "%d", cvalue);
 		parameters.push_back(temp);
-		//delete temp;
 	}
 
-	int tvalue = this->tParameter->value();
-	if(tvalue != 0){
+	double tvalue = this->tParameter->value();
+	if(tvalue != 0.0){
 		parameters.push_back("-t");
-		//char *temp = new char;
-		//itoa(tvalue, temp, 10);
 		char temp[256];
-		sprintf(temp, "%d", tvalue);
+		sprintf(temp, "%g", tvalue);
 		parameters.push_back(temp);
-		//delete temp;
 	}
-
-	//QString stextQ = this->sParameter->text();
-	//std::string stext = stextQ.toStdString();
-	//if(!stext.empty()){
-	//	parameters.push_back("-s");
-	//	char *temp = new char;
-	//	strcpy(temp, stext.c_str());
-	//	parameters.push_back(temp);
-	//	//delete temp;
-	//}
-
-	//QString RtextQ = this->RParameter->text();
-	//std::string Rtext = RtextQ.toStdString();
-	//if(!Rtext.empty()){
-	//	parameters.push_back("-R");
-	//	char *temp = new char;
-	//	strcpy(temp, Rtext.c_str());
-	//	parameters.push_back(temp);
-	//	//delete temp;
-	//}
-
-	//QString TtextQ = this->TParameter->text();
-	//std::string Ttext = TtextQ.toStdString();
-	//if(!Ttext.empty()){
-	//	parameters.push_back("-T");
-	//	char *temp = new char;
-	//	strcpy(temp, Ttext.c_str());
-	//	parameters.push_back(temp);
-	//	//delete temp;
-	//}
-
-	//QString ItextQ = this->IParameter->text();
-	//std::string Itext = ItextQ.toStdString();
-	//if(!Itext.empty()){
-	//	parameters.push_back("-I");
-	//	char *temp = new char;
-	//	strcpy(temp, Itext.c_str());
-	//	parameters.push_back(temp);
-	//	//delete temp;
-	//}
 
 	QString qtextQ = this->qParameter->text();
 	std::string qtext = qtextQ.toStdString();
@@ -741,7 +941,6 @@ void EventQtSlotConnect::executeCmrepVskel()
 		char *temp = new char;
 		strcpy(temp, qtext.c_str());
 		parameters.push_back(temp);
-		//delete temp;
 	}
 	
 	char *command[3];
@@ -754,12 +953,10 @@ void EventQtSlotConnect::executeCmrepVskel()
 	command[2] = new char [outputNameSkel.length() + 1];
 	strcpy(command[2], outputNameSkel.c_str());
 	parameters.push_back(command[2]);
+	VTKfilename = outputNameSkel;
 
 	QFuture<void> future = QtConcurrent::run(&this->v, &VoronoiSkeletonTool::execute, parameters.size(), parameters);
-	this->FutureWatcher.setFuture(future);
-	//v.execute(parameters.size(), parameters);
-
-	VTKfilename = outputNameSkel;
+	this->FutureWatcher.setFuture(future);	
 }
 
 void EventQtSlotConnect::createActions()
@@ -771,6 +968,10 @@ void EventQtSlotConnect::createActions()
 	saveAct = new QAction(tr("&Save"), this);
 	saveAct->setShortcut(tr("Ctrl+S"));
 	connect(saveAct, SIGNAL(triggered()), this, SLOT(slot_save()));
+
+	importAct = new QAction(tr("&Import nifti.."), this);
+	importAct->setShortcut(tr("Ctrl+I"));
+	connect(importAct, SIGNAL(triggered()), this, SLOT(slot_import()));
 }
 
 void EventQtSlotConnect::createMenus()
@@ -778,6 +979,7 @@ void EventQtSlotConnect::createMenus()
 	fileMenu = new QMenu(tr("&File"), this);
 	fileMenu->addAction(openAct);
 	fileMenu->addAction(saveAct);
+	fileMenu->addAction(importAct);
 	menuBar()->addMenu(fileMenu);
 }
 
@@ -975,10 +1177,9 @@ void EventQtSlotConnect::readVTK(std::string filename){
     reader->Update();
 
 	// Create a polydata object
-	//vtkPolyData* polydata = planeSource->GetOutput();
     vtkPolyData* polydata =  reader->GetPolyDataOutput();	
-	//initialize label data for store in vtk file	
 
+	//initialize label data for store in vtk file
 	this->polyObject = polydata;
 
 	//see if skeleton vtk
@@ -1026,6 +1227,8 @@ void EventQtSlotConnect::readVTK(std::string filename){
 	mouseInteractor->SetDefaultRenderer(renderer);
 	mouseInteractor->labelTriNumber = this->TriangleNumber;
 	mouseInteractor->labelPtNumber = this->PointNumber;
+    /*mouseInteractor->undoButton = this->pushButtonUndo;
+    mouseInteractor->redoButton = this->pushButtonRedo;*/
 	
 	//reset everything
 	Global::vectorTagPoints.clear();
@@ -1044,7 +1247,9 @@ void EventQtSlotConnect::readVTK(std::string filename){
 	if(this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer() != NULL)
 		this->qvtkWidget->GetRenderWindow()->RemoveRenderer(this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
 	this->qvtkWidget->GetRenderWindow()->AddRenderer(renderer);
-	this->qvtkWidget->update();	
+    this->qvtkWidget->update();
+   /* this->labelBckgndColor->setPalette(QPalette(Qt::blue));
+    this->labelBckgndColor->setAutoFillBackground(true);*/
 
 	//get normals
 	vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
@@ -1070,8 +1275,250 @@ void EventQtSlotConnect::readVTK(std::string filename){
 	}
 	this->PointNumber->setText(QString::number(Global::vectorTagPoints.size()));
 	this->TriangleNumber->setText(QString::number(Global::vectorTagTriangles.size()));
+    /*this->pushButtonUndo->setEnabled(false);
+    this->pushButtonRedo->setEnabled(false);*/
 
 	this->ViewToolButton->setEnabled(false);
+}
+
+itk::SmartPointer<itk::OrientedRASImage<double, 3>> EventQtSlotConnect::threshold(
+	itk::SmartPointer<itk::OrientedRASImage<double, 3>> input, double u1, double u2, double v1, double v2)
+{
+	typedef itk::BinaryThresholdImageFilter<ImageType, ImageType> threshFilterType;
+	typename threshFilterType::Pointer threshFilter = threshFilterType::New();
+	threshFilter->SetInput(input);
+	threshFilter->SetLowerThreshold(u1);
+	threshFilter->SetUpperThreshold(u2);
+	threshFilter->SetInsideValue(v1);
+	threshFilter->SetOutsideValue(v2);
+	threshFilter->Update();
+
+	return threshFilter->GetOutput();
+}
+
+itk::SmartPointer<itk::OrientedRASImage<double, 3>> EventQtSlotConnect::smooth(
+	itk::SmartPointer<itk::OrientedRASImage<double, 3>> input, const char * sigma)
+{
+	vnl_vector_fixed<double, 3> var;
+	var.fill(atof(sigma));
+
+	typename ImageType::TransformMatrixType M = input->GetVoxelSpaceToRASPhysicalSpaceMatrix();
+
+	vnl_vector_fixed<double, 3 + 1> X, XP;
+	for (size_t d = 0; d < 3; d++)
+		X[d] = var[d];
+	X[3] = 0.0;
+
+	// Apply matrix
+	XP = M * X;
+	for (size_t d = 0; d < 3; d++)
+		var[d] = XP[d];
+
+	for (size_t d = 0; d < 3; d++)
+		var[d] = fabs(var[d]);
+
+	// Creation of the gaussian filter
+	typedef itk::DiscreteGaussianImageFilter< ImageType, ImageType >  smoothFilterType;
+	smoothFilterType::Pointer gaussianFilter = smoothFilterType::New();
+	smoothFilterType::ArrayType variance;
+
+	for (size_t i = 0; i < 3; i++)
+		variance[i] = var[i] * var[i];
+
+	// Smoothing operation
+	gaussianFilter->SetInput(input);
+	gaussianFilter->SetVariance(variance);
+	gaussianFilter->SetUseImageSpacingOn();
+	gaussianFilter->Update();
+
+	return gaussianFilter->GetOutput();
+}
+
+void EventQtSlotConnect::writeNiftii(
+	itk::SmartPointer<itk::OrientedRASImage<double, 3>> input, const char * outputFilename)
+{
+	typedef itk::OrientedRASImage<double, 3> OutputImageType;
+	typename OutputImageType::Pointer output = OutputImageType::New();
+	output->SetRegions(input->GetBufferedRegion());
+	output->SetSpacing(input->GetSpacing());
+	output->SetOrigin(input->GetOrigin());
+	output->SetDirection(input->GetDirection());
+	output->SetMetaDataDictionary(input->GetMetaDataDictionary());
+	output->Allocate();
+
+	// Copy everything, rounding if the pixel type is integer
+	size_t n = input->GetBufferedRegion().GetNumberOfPixels();
+	for (size_t i = 0; i < n; i++)
+		output->GetBufferPointer()[i] = (double)(input->GetBufferPointer()[i] + 0.0);
+
+	// Set the file notes for this image
+	itk::EncapsulateMetaData<string>(output->GetMetaDataDictionary(), itk::ITK_FileNotes, std::string("Created by Convert3D"));
+
+	// Write the image out
+	typedef itk::ImageFileWriter<OutputImageType> WriterType;
+	typename WriterType::Pointer writer = WriterType::New();
+	writer->SetInput(output);
+
+	writer->SetFileName(outputFilename);
+	writer->Update();
+}
+
+void EventQtSlotConnect::importNIFTI(std::vector<std::string> filenames, bool checked, std::string sigma, std::vector<std::string> th1Param, std::vector<std::string> th2Param)
+{
+	// Parameters 
+	const char *inputFilename = filenames[0].c_str();
+	const char *outputFilename = filenames[1].c_str();
+	
+	if (checked)
+	{
+		const char *sigmaVal = sigma.c_str();
+
+		// First threshold parameters
+		double u11 = strcmp(th1Param[0].c_str(), "-inf") == 0 ? -vnl_huge_val(0.0) : std::stod(th1Param[0]);
+		double u21 = strcmp(th1Param[1].c_str(), "inf") == 0 ? vnl_huge_val(0.0) : std::stod(th1Param[1]);
+		double v11 = std::stod(th1Param[2]);
+		double v21 = std::stod(th1Param[3]);
+
+		// Second threshold parameters
+		double u12 = strcmp(th2Param[0].c_str(), "-inf") == 0 ? -vnl_huge_val(0.0) : std::stod(th2Param[0]);
+		double u22 = strcmp(th2Param[1].c_str(), "inf") == 0 ? vnl_huge_val(0.0) : std::stod(th2Param[1]);
+		double v12 = std::stod(th2Param[2]);
+		double v22 = std::stod(th2Param[3]);
+
+		//Read the nifti file
+		typename itk::ImageIOBase::Pointer iobase;
+		iobase = itk::ImageIOFactory::CreateImageIO(inputFilename, itk::ImageIOFactory::ReadMode);
+		iobase->SetFileName(inputFilename);
+
+		// Read the image information
+		iobase->ReadImageInformation();
+
+		// Set up the reader
+		typedef itk::ImageFileReader<ImageType> ReaderType;
+		typename ReaderType::Pointer reader = ReaderType::New();
+		reader->SetFileName(inputFilename);
+		reader->SetImageIO(iobase);
+
+		// nii input -Thresholding 1-> -Smoothing-> -Thresholding 2-> nii temp output
+		ImagePointer input_threshold1 = reader->GetOutput();
+		ImagePointer input_smooth = threshold(input_threshold1, u11, u21, v11, v21);
+		ImagePointer input_threshold2 = smooth(input_smooth, sigmaVal);
+		ImagePointer outputtemp = threshold(input_threshold2, u12, u22, v12, v22);
+
+		// Create the output image 
+		const char *niiTemp = "temp.nii.gz";
+		writeNiftii(outputtemp, niiTemp);
+		vtklevelset(niiTemp, outputFilename, "1");
+		remove(niiTemp);
+		std::cout << "Smoothing and conversion done" << std::endl;
+	}
+	else
+	{
+		vtklevelset(inputFilename, outputFilename, "1");
+		std::cout << "Conversion done" << std::endl;
+	}
+	VTKfilename = std::string(outputFilename);
+	readVTK(VTKfilename);
+}
+
+void EventQtSlotConnect::vtklevelset(const char * inputNii, const char * outputVtk, std::string threshold)
+{
+	// Read the input image
+	typedef itk::OrientedRASImage<float, 3> ImageType;
+	typedef itk::ImageFileReader<ImageType> ReaderType;
+	ReaderType::Pointer fltReader = ReaderType::New();
+	fltReader->SetFileName(inputNii);
+	fltReader->Update();
+	ImageType::Pointer imgInput = fltReader->GetOutput();
+
+	// Get the range of the input image
+	float imax = imgInput->GetBufferPointer()[0];
+	float imin = imax;
+	for (size_t i = 0; i < imgInput->GetBufferedRegion().GetNumberOfPixels(); i++)
+	{
+		float x = imgInput->GetBufferPointer()[i];
+		imax = std::max(imax, x);
+		imin = std::min(imin, x);
+	}
+
+	float cut = atof(threshold.c_str());
+	std::cout << "Image Range: [" << imin << ", " << imax << "]" << std::endl;
+	std::cout << "Taking level set at " << cut << std::endl;
+
+	// Create an importer and an exporter in VTK
+	typedef itk::VTKImageExport<ImageType> ExporterType;
+	ExporterType::Pointer fltExport = ExporterType::New();
+	fltExport->SetInput(imgInput);
+	vtkImageImport *fltImport = vtkImageImport::New();
+
+	//ConnectITKToVTK(fltExport.GetPointer(), fltImport);
+	fltImport->SetUpdateInformationCallback(fltExport.GetPointer()->GetUpdateInformationCallback());
+	fltImport->SetPipelineModifiedCallback(fltExport.GetPointer()->GetPipelineModifiedCallback());
+	fltImport->SetWholeExtentCallback(fltExport.GetPointer()->GetWholeExtentCallback());
+	fltImport->SetSpacingCallback(fltExport.GetPointer()->GetSpacingCallback());
+	fltImport->SetOriginCallback(fltExport.GetPointer()->GetOriginCallback());
+	fltImport->SetScalarTypeCallback(fltExport.GetPointer()->GetScalarTypeCallback());
+	fltImport->SetNumberOfComponentsCallback(fltExport.GetPointer()->GetNumberOfComponentsCallback());
+	fltImport->SetPropagateUpdateExtentCallback(fltExport.GetPointer()->GetPropagateUpdateExtentCallback());
+	fltImport->SetUpdateDataCallback(fltExport.GetPointer()->GetUpdateDataCallback());
+	fltImport->SetDataExtentCallback(fltExport.GetPointer()->GetDataExtentCallback());
+	fltImport->SetBufferPointerCallback(fltExport.GetPointer()->GetBufferPointerCallback());
+	fltImport->SetCallbackUserData(fltExport.GetPointer()->GetCallbackUserData());
+
+	// Run marching cubes on the input image
+	vtkMarchingCubes *fltMarching = vtkMarchingCubes::New();
+	fltMarching->SetInputConnection(fltImport->GetOutputPort());
+	fltMarching->ComputeScalarsOff();
+	fltMarching->ComputeGradientsOff();
+	fltMarching->ComputeNormalsOn();
+	fltMarching->SetNumberOfContours(1);
+	fltMarching->SetValue(0, cut);
+	fltMarching->Update();
+
+	vtkPolyData *pipe_tail = fltMarching->GetOutput();
+
+	// Create the transform filter
+	vtkTransformPolyDataFilter *fltTransform = vtkTransformPolyDataFilter::New();
+	fltTransform->SetInputData(pipe_tail);
+
+	// Compute the transform from VTK coordinates to NIFTI/RAS coordinates
+	typedef vnl_matrix_fixed<double, 4, 4> Mat44;
+	Mat44 vtk2out;
+	Mat44 vtk2nii = ConstructVTKtoNiftiTransform(
+		imgInput->GetDirection().GetVnlMatrix(),
+		imgInput->GetOrigin().GetVnlVector(),
+		imgInput->GetSpacing().GetVnlVector());
+
+	// If we actually asked for voxel coordinates, we need to fix that
+
+	vtk2out = vtk2nii;
+	
+
+	// Update the VTK transform to match
+	vtkTransform *transform = vtkTransform::New();
+	transform->SetMatrix(vtk2out.data_block());
+	fltTransform->SetTransform(transform);
+	fltTransform->Update();
+
+	// Get final output
+	vtkPolyData *mesh = fltTransform->GetOutput();
+
+	// Flip normals if determinant of SFORM is negative
+	if (transform->GetMatrix()->Determinant() < 0)
+	{
+		vtkPointData *pd = mesh->GetPointData();
+		vtkDataArray *nrm = pd->GetNormals();
+		for (size_t i = 0; i < (size_t)nrm->GetNumberOfTuples(); i++)
+			for (size_t j = 0; j < (size_t)nrm->GetNumberOfComponents(); j++)
+				nrm->SetComponent(i, j, -nrm->GetComponent(i, j));
+		nrm->Modified();
+	}
+
+	// Write the output
+	vtkPolyDataWriter *writer = vtkPolyDataWriter::New();
+	writer->SetFileName(outputVtk);		
+	writer->SetInputData(mesh);
+	writer->Update();
 }
 
 void EventQtSlotConnect::saveVTKFile(QString fileName)
@@ -1218,27 +1665,29 @@ void EventQtSlotConnect::saveVTKFile(QString fileName)
 	field->AddArray(intArray1);
 
 	finalPolyData->SetFieldData(field);
-	writer->SetInput(finalPolyData);
+    writer->SetInputData(finalPolyData);
 	writer->Update();
 	writer->Write();
 }
 
 void EventQtSlotConnect::saveParaViewFile(QString fileName)
 {
+    fileName.replace(".vtk","");
 	if(Global::vectorTagTriangles.size() > 0)
 	{
 		//////////////save another file for ParaView////////////////////
 		vtkSmartPointer<vtkGenericDataObjectWriter> writerParaView = 
 			vtkSmartPointer<vtkGenericDataObjectWriter>::New();
 #ifdef _WIN64
-		writerParaView->SetFileName(fileName.toStdString().c_str());
+		writerParaView->SetFileName(fileName.toStdString().append(".vtk").c_str());
 #elif _WIN32
-		writerParaView->SetFileName(fileName.toStdString().c_str());
+		writerParaView->SetFileName(fileName.toStdString().append(".vtk").c_str());
 #elif __APPLE__
 		writerParaView->SetFileName(fileName.toStdString().append(".vtk").c_str());
 #elif __linux__
 		writerParaView->SetFileName(fileName.toStdString().append(".vtk").c_str());
 #endif
+
 
 		//Append the two meshes 
 		vtkSmartPointer<vtkAppendPolyData> appendFilter =
@@ -1250,13 +1699,13 @@ void EventQtSlotConnect::saveParaViewFile(QString fileName)
 				vtkSmartPointer<vtkActorCollection>::New();
 			Global::vectorTagTriangles[i].triActor->GetActors(actorCollection);		
 			vtkPolyData* polyData = vtkPolyData::SafeDownCast(actorCollection->GetLastActor()->GetMapper()->GetInput());
-			appendFilter->AddInput(polyData);
+            appendFilter->AddInputData(polyData);
 		}
 
 		vtkSmartPointer<vtkCleanPolyData> cleanPoly = 
 			vtkSmartPointer<vtkCleanPolyData>::New();
 
-		cleanPoly->SetInput(appendFilter->GetOutput());
+        cleanPoly->SetInputConnection(appendFilter->GetOutputPort());
 		cleanPoly->Update();
 
 		std::vector<int> labelData;
@@ -1297,22 +1746,24 @@ void EventQtSlotConnect::saveParaViewFile(QString fileName)
 		cleanPoly->GetOutput()->GetPointData()->AddArray(fltArray6);
 		cleanPoly->GetOutput()->GetPointData()->AddArray(fltArray7);
 		cleanPoly->GetOutput()->GetCellData()->AddArray(fltArray8);
-		writerParaView->SetInput(cleanPoly->GetOutput());
+        writerParaView->SetInputData(cleanPoly->GetOutput());
 		//writerParaView->SetFileTypeToBinary();//solve for matlab
 		writerParaView->SetFileTypeToASCII();
 		writerParaView->Update();
 		writerParaView->Write();		
 	}
+		
 }
 
 void EventQtSlotConnect::saveCmrepFile(QString fileName)
 {
+    fileName.replace(".vtk","");
 	///////////////save cmrep file ////////////////////
 	std::ofstream cmrepFile;
 #ifdef _WIN64
-	cmrepFile.open((fileName.toStdString().substr(0, fileName.toStdString().length() - 4)).append(".cmrep").c_str());
+	cmrepFile.open((fileName.toStdString()).append(".cmrep").c_str());
 #elif _WIN32
-	cmrepFile.open((fileName.toStdString().substr(0, fileName.toStdString().length() - 4)).append(".cmrep").c_str());
+	cmrepFile.open((fileName.toStdString()).append(".cmrep").c_str());
 #elif __APPLE__
 	cmrepFile.open((fileName.toStdString()).append(".cmrep").c_str());
 #elif __linux__
@@ -1321,35 +1772,38 @@ void EventQtSlotConnect::saveCmrepFile(QString fileName)
 
 	cmrepFile<<"Grid.Type = ";
 	if(this->GridTypeComboBox->currentIndex() == 0){
-		cmrepFile<<"LoopSubdivision"<<endl;
+		cmrepFile << "LoopSubdivision";
 	}
+	cmrepFile << std::endl;
 
 	cmrepFile<<"Grid.Model.SolverType = ";
 	if(this->SolverTypeComboBox->currentIndex() == 0)
-		cmrepFile<<"BruteForce"<<endl;
+		cmrepFile<<"BruteForce";
 	else if(this->SolverTypeComboBox->currentIndex() == 1)
-		cmrepFile<<"PDE"<<endl;
+		cmrepFile<<"PDE";
+	cmrepFile << std::endl;
 
 	if(this->GridTypeComboBox->currentIndex() == 0){
 		cmrepFile<<"Grid.Model.Atom.SubdivisionLevel = ";
 		switch(this->SubLevelComboBox->currentIndex()){
 		case 0: 
-			cmrepFile<<"0"<<endl;
+			cmrepFile<<"0";
 			break;
 		case 1: 
-			cmrepFile<<"1"<<endl;
+			cmrepFile<<"1";
 			break;
 		case 2:
-			cmrepFile<<"2"<<endl;
+			cmrepFile<<"2";
 			break;
 		case 3:
-			cmrepFile<<"3"<<endl;
+			cmrepFile<<"3";
 			break;
 		case 4:
-			cmrepFile<<"4"<<endl;
+			cmrepFile<<"4";
 			break;
 		}
 	}
+	cmrepFile << std::endl;
 
 	cmrepFile<<"Grid.Model.Coefficient.FileName = ";
 	std::string name = fileName.toStdString();
@@ -1360,23 +1814,27 @@ void EventQtSlotConnect::saveCmrepFile(QString fileName)
 #elif _WIN32
 	lastSlash = name.find_last_of("/");
 #elif __APPLE__
-	lastSlash = name.find_last_of("\\");
+	lastSlash = name.find_last_of("/");
 #elif __linux__
 	lastSlash = name.find_last_of("\\");
 #endif
 	
-	cmrepFile<<name.substr(lastSlash+1, name.size())<<endl;
+	cmrepFile<<name.substr(lastSlash+1, name.size());
+	cmrepFile << std::endl;
 
-	cmrepFile<<"Grid.Model.Coefficient.FileType = VTK"<<endl;
+	cmrepFile<<"Grid.Model.Coefficient.FileType = VTK";
+	cmrepFile << std::endl;
 
 	if(this->SolverTypeComboBox->currentIndex() == 1){
 		cmrepFile<<"Grid.Model.Coefficient.ConstantRho = ";
-		cmrepFile<<this->RhoLineEdit->text().toStdString()<<endl;
+		cmrepFile<<this->RhoLineEdit->text().toStdString();
+		cmrepFile << std::endl;
 	}
 
 	if(this->ConsRadiusCheckBox->isChecked()){
 		cmrepFile<<"Grid.Model.Coefficient.ConstantRadius = ";
-		cmrepFile<<this->RadiusLineEdit->text().toStdString()<<endl;
+		cmrepFile<<this->RadiusLineEdit->text().toStdString();
+		cmrepFile << std::endl;
 	}
 
 	cmrepFile<<"Grid.Model.nLabels = ";
@@ -1392,166 +1850,23 @@ void EventQtSlotConnect::saveCmrepFile(QString fileName)
 		if(trackNumLabel[i])
 			numCount ++;
 	cmrepFile<<numCount;
+	cmrepFile << std::endl;
 
 	cmrepFile.close();
 	
-}
-
-void EventQtSlotConnect::Decimate()
-{
-	if(this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer() != NULL)
-	{
-		Global::decimateMode = true;
-
-		//clear all triangle
-		for(int i = 0; i < Global::vectorTagTriangles.size(); i++)
-		{
-			this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(Global::vectorTagTriangles[i].triActor);
-		}
-		Global::vectorTagTriangles.clear();
-		for(int i = 0; i < Global::vectorTagPoints.size(); i++)
-			this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->RemoveActor(Global::vectorTagPoints[i].actor);
-		Global::vectorTagPoints.clear();
-		Global::vectorTagEdges.clear();
-
-		//find the first actor
-		vtkSmartPointer<vtkActorCollection> actors = this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors();
-		//this->GetDefaultRenderer()->GetActors();	
-		vtkSmartPointer<vtkActor> actor0 =  static_cast<vtkActor *>(actors->GetItemAsObject(0));	
-		vtkSmartPointer<vtkDataSet> vtkdata = actor0->GetMapper()->GetInputAsDataSet();
-
-		vtkSmartPointer<vtkTriangleFilter> triangleFilter =
-			vtkSmartPointer<vtkTriangleFilter>::New();
-		triangleFilter->SetInputConnection(vtkdata->GetProducerPort());
-		triangleFilter->Update();
-
-
-		vtkSmartPointer<vtkDecimatePro> decimate =
-			vtkSmartPointer<vtkDecimatePro>::New();
-		decimate->SetInputConnection(triangleFilter->GetOutputPort());
-		cout<<"what is targetReduction "<<targetReduction<<endl;
-		decimate->SetTargetReduction(targetReduction);
-		decimate->SetFeatureAngle(featureAngle);
-		decimate->Update();
-
-		vtkSmartPointer<vtkPolyData> decimated =
-			vtkSmartPointer<vtkPolyData>::New();
-		decimated->ShallowCopy(decimate->GetOutput());
-
-		/*vtkSmartPointer<vtkPolyDataMapper> mapper = 
-		vtkSmartPointer<vtkPolyDataMapper>::New();
-		mapper->SetInput(decimated);*/
-
-		/*vtkSmartPointer<vtkActor> actor =
-			vtkSmartPointer<vtkActor>::New();
-		actor->SetMapper(mapper);
-
-		this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(actor);*/
-		vtkIdType npts, *ptsTri;
-		decimated->GetPolys()->InitTraversal();
-		while(decimated->GetPolys()->GetNextCell(npts,ptsTri)) 
-		{		
-			vtkSmartPointer<vtkPoints> pts =
-				vtkSmartPointer<vtkPoints>::New();
-			for(int i = 0; i < 3; i++){
-				pts->InsertNextPoint(decimated->GetPoint(ptsTri[i]));
-			}
-
-			int seq1, seq2, seq3;
-
-			for(int i = 0;i < vtkdata->GetNumberOfPoints(); i++)
-			{
-				if(vtkdata->GetPoint(i)[0] == decimated->GetPoint(ptsTri[0])[0]
-				&& vtkdata->GetPoint(i)[1] == decimated->GetPoint(ptsTri[0])[1]
-				&& vtkdata->GetPoint(i)[2] == decimated->GetPoint(ptsTri[0])[2])
-				{
-					seq1 = i;
-				}
-
-				if(vtkdata->GetPoint(i)[0] == decimated->GetPoint(ptsTri[1])[0]
-				&& vtkdata->GetPoint(i)[1] == decimated->GetPoint(ptsTri[1])[1]
-				&& vtkdata->GetPoint(i)[2] == decimated->GetPoint(ptsTri[1])[2])
-				{
-					seq2 = i;
-				}
-
-				if(vtkdata->GetPoint(i)[0] == decimated->GetPoint(ptsTri[2])[0]
-				&& vtkdata->GetPoint(i)[1] == decimated->GetPoint(ptsTri[2])[1]
-				&& vtkdata->GetPoint(i)[2] == decimated->GetPoint(ptsTri[2])[2])
-				{
-					seq3 = i;
-				}
-			}
-
-			vtkSmartPointer<vtkTriangle> triangle =
-				vtkSmartPointer<vtkTriangle>::New();
-			triangle->GetPointIds()->SetId ( 0, 0 );
-			triangle->GetPointIds()->SetId ( 1, 1 );
-			triangle->GetPointIds()->SetId ( 2, 2 );
-
-			vtkSmartPointer<vtkCellArray> triangles =
-				vtkSmartPointer<vtkCellArray>::New();
-			triangles->InsertNextCell ( triangle );
-
-			// Create a polydata object
-			vtkSmartPointer<vtkPolyData> trianglePolyData =
-				vtkSmartPointer<vtkPolyData>::New();
-
-			// Add the geometry and topology to the polydata
-			trianglePolyData->SetPoints ( pts );
-			trianglePolyData->SetPolys ( triangles );
-
-			// Create mapper and actor
-			vtkSmartPointer<vtkPolyDataMapper> mapper =
-				vtkSmartPointer<vtkPolyDataMapper>::New();
-	#if VTK_MAJOR_VERSION <= 5
-			mapper->SetInput(trianglePolyData);
-			//mapper->SetInput(appendFilter->GetOutput());
-	#else
-			mapper->SetInputData(trianglePolyData);
-	#endif
-			vtkSmartPointer<vtkActor> actor =
-				vtkSmartPointer<vtkActor>::New();
-			actor->SetMapper(mapper);
-			actor->GetProperty()->SetEdgeVisibility(true);
-			actor->GetProperty()->SetEdgeColor(0.0,0.0,0.0);
-			actor->GetProperty()->SetColor(0.2, 0.7, 0.2);
-			vtkSmartPointer<vtkProperty> backPro = 
-				vtkSmartPointer<vtkProperty>::New();
-			backPro->SetColor(0.4, 0.4, 0.4);
-			actor->SetBackfaceProperty(backPro);
-
-			this->qvtkWidget->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->AddActor(actor);
-			//this->GetDefaultRenderer()->AddActor(actor);
-
-			TagTriangle tri;
-			tri.triActor = actor;
-			tri.p1[0] = decimated->GetPoint(ptsTri[0])[0]; tri.p1[1] = decimated->GetPoint(ptsTri[0])[1]; tri.p1[2] = decimated->GetPoint(ptsTri[0])[2];
-			tri.p2[0] = decimated->GetPoint(ptsTri[1])[0]; tri.p2[1] = decimated->GetPoint(ptsTri[1])[1]; tri.p2[2] = decimated->GetPoint(ptsTri[1])[2];
-			tri.p3[0] = decimated->GetPoint(ptsTri[2])[0]; tri.p3[1] = decimated->GetPoint(ptsTri[2])[1]; tri.p3[2] = decimated->GetPoint(ptsTri[2])[2];
-			tri.id1 = -1; tri.id2 = -1; tri.id3 = -1;
-			tri.centerPos[0] = trianglePolyData->GetCenter()[0];
-			tri.centerPos[1] = trianglePolyData->GetCenter()[1];
-			tri.centerPos[2] = trianglePolyData->GetCenter()[2];
-			tri.seq1 = seq1;//ptsTri[0];
-			tri.seq2 = seq2;//ptsTri[1];
-			tri.seq3 = seq3;//ptsTri[2];
-			Global::vectorTagTriangles.push_back(tri);
-		}
-	}
 }
 
 void EventQtSlotConnect::loadSettings()
 {
 	QSettings settings(settingsFile, QSettings::IniFormat);
 	QString pText = settings.value("path", "").toString();
-	this->pathParameter->setText(pText);
+	this->pathQvoronoi->setText(pText);
 }
 
 void EventQtSlotConnect::saveSettings()
 {
 	QSettings settings(settingsFile, QSettings::IniFormat);
-	QString pText = this->pathParameter->text();
+	QString pText = this->pathQvoronoi->text();
 	settings.setValue("path", pText);
 }
 
@@ -1564,6 +1879,7 @@ void EventQtSlotConnect::iniTriLabel()
 		QString displayText = QString::number(i + 1);
 		QColor qc = QColor::fromRgb(rand() % 255, rand() % 255, rand() % 255);
 		triLabelColors[i] = qc;
+		hideTriLabel[i] = 0;
 		mouseInteractor->triLabelColors[i] = qc;
 		if(i == 0){
 			Global::triCol[0] = qc.red() / 255.0;

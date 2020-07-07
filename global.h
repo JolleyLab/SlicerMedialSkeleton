@@ -14,6 +14,11 @@ struct TagInfo
 	int tagIndex;//the index of the tag(1-10)
 };
 
+struct LabelTriangle
+{
+	std::string labelName; // name of the triangle label
+	QColor labelColor; // color of the triangle label
+};
 
 struct TagTriangle
 {
@@ -44,7 +49,7 @@ struct TagEdge
 	int ptId1;
 	int ptId2;
 	int constrain;// store the constraint of these two points
-	int numEdge;//store how many edge it have
+	int numEdge;//store how many edge it has
 	int seq;//use of deletion
 };
 
@@ -64,6 +69,8 @@ class Global
 public:
 	//Store Tag Information
 	static std::vector<TagInfo> vectorTagInfo;
+	//Store Triangle label information
+	static std::vector<LabelTriangle> vectorLabelInfo;
 	//Store Triangle information
 	static std::vector<TagTriangle> vectorTagTriangles;
 	//Store Points information

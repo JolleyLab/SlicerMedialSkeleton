@@ -1,7 +1,7 @@
 #ifndef MOUSERINTERACTORADD_H
 #define MOUSERINTERACTORADD_H
 
-
+#include <QtCore/QtGlobal>
 #include <vtkGenericDataObjectReader.h>
 
 #include <vtkPolyDataMapper.h>
@@ -69,7 +69,12 @@
 #include <vtkPointPicker.h>
 #include <vtkCellPicker.h>
 
-#include <QtGui>
+#if QT_VERSION >= 0x050000
+    #include <QtWidgets>
+#else
+    #include <QtGui>
+#endif
+
 #include <QObject>
 
 #include "global.h"
@@ -85,6 +90,9 @@
 #define PICKPTTRI 7
 #define DESELECTPT 8
 #define MOVEPT 9
+#define EDITTAGPT 10
+#define UNDO 11
+#define REDO 12
 
 #define SHOW 0
 #define HIDE 1
@@ -120,6 +128,7 @@ public:
 	void CheckNormal(int triId[3]);
 	void AddDecimateEdge(int pointSeq);
 	int ChangeTriLabel(double pos[3]);
+    TagPoint ChangePtLabel(double pos[3]);
 	bool isValidEdge(int id1, int id2);
 	void SetNextTriPt();
 	void SetNextTriPtHelper(int id1, int id2);
@@ -135,6 +144,8 @@ public:
 	void setNormalGenerator(vtkSmartPointer<vtkPolyDataNormals> normalGenerator);
 	void updateLabelTriNum();
 	void updateLabelPtNum();
+	void updateUndo();
+	void updateRedo();
 	void reset();
 
 	void DrawDelaunayTriangle();
@@ -154,7 +165,10 @@ public:
 	//Display the number points and triangles
 	QLabel *labelPtNumber;
 	QLabel *labelTriNumber;
-
+	/*
+	QPushButton *undoButton;
+	QPushButton *redoButton;
+	*/
 	int operationFlag;
 	int preOperationFlag;
 	std::string preKey;
@@ -163,8 +177,7 @@ public:
 	int currentTriIndex;
 
 	int actionCounter;
-	QColor triLabelColors[10];
-
+	std::vector<QColor> triLabelColors;
 
 	//Using reference to store all the global value
 	std::vector<TagInfo> &vectorTagInfo;
@@ -207,16 +220,35 @@ private:
 	//For moving point interaction
 	void DoAction(int action, int ptIndex, int ptOldSeq);
 
+	void RedoAction(int action);
+	//Flip normal and change triangle label;
+	void RedoAction(int action, double pos[3], int triIndex = -1);
+	//For point interaction(add point, delete point)
+	void RedoAction(int action, TagPoint pointInfo, int ptIndex);
+	//For triangle interaction(draw triangle, delete triangle)
+	void RedoAction(int action, TagTriangle triangleInfo);
+	//
+	void RedoAction(int action, int ptIndex);
+	//For moving point interaction
+	void RedoAction(int action, int ptIndex, int ptOldSeq);
+
 	void UndoAction();
+
+	void RedoAction();
 
 	bool drawTriMode;
 	vtkSmartPointer<vtkPolyDataNormals> normalGenerator;
 	
-	//Store each operation, use for undo function
+	//Store each operation, use for undo/redo function
 	std::vector<TagAction> vectorActions;		
+	std::vector<TagAction> vectorRedoActions;
 
 	bool isCtrlPress;
+	bool isShiftPress;
 	//Record moving point index
 	int movePtIndex;
+
+	//Record of triangle violation
+	std::string recordTriViolation; 
 };
 #endif

@@ -1,4 +1,10 @@
-#include <QtGui>
+#include <QtCore/QtGlobal>
+
+#if QT_VERSION >= 0x050000	
+    #include <QtWidgets>
+#else
+    #include <QtGui>
+#endif
 
 #include "AddTagDialog.h"
 
@@ -43,16 +49,16 @@ AddTagDialog::AddTagDialog(QWidget *parent)
 	QVBoxLayout *leftLayout = new QVBoxLayout;
 	leftLayout->addLayout(topLeftLayout);
 	leftLayout->addLayout(secondLeftLayout);
+	leftLayout->addWidget(interiorButton);
     leftLayout->addWidget(freeEdgeButton);
     leftLayout->addWidget(branchButton);
-    leftLayout->addWidget(interiorButton);
 	leftLayout->addWidget(otherButton);
 	leftLayout->addLayout(thirdLeftLayout);
 	leftLayout->addWidget(addButton);
 
 	QGridLayout *mainLayout = new QGridLayout;
 	mainLayout->addLayout(leftLayout, 0, 0);
-	mainLayout->setRowStretch(2, 1);
+    mainLayout->setRowStretch(2, 1);
 	setLayout(mainLayout);
 	setWindowTitle(tr("Tag"));	
 

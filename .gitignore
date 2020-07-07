@@ -3,3 +3,5 @@ build2/
 *.txt~
 *.cxx~
 *.h~
+*.pro.*
+*.pro

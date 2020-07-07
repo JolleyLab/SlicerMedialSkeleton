@@ -89,7 +89,7 @@ VTKMeshShortestDistance
 
   // Compute the intersection with the line
   fltCellLocator->IntersectWithLine( 
-    v1,v2, 0.001, t, ptLine, pCoords, subId, cellid);
+    (double*)v1,(double*)v2, 0.001, (double&)t, (double*)ptLine, (double*)pCoords, subId, cellid);
 
   return subId == 0;
 }
@@ -111,7 +111,7 @@ VTKMeshShortestDistance
     
     // Compute the intersection with the line
     int rc = fltCellLocator->IntersectWithLine(
-      v1, v2, 0.001, t, ptLine, pCoords, subId, iCell);
+      (double*)v1, (double*)v2, 0.001, (double&)t, (double*)ptLine, (double*)pCoords, subId, iCell);
 
     // cout << "   RC: " << rc << " \t T = " << t << " \t iCell " << iCell << endl;
 
@@ -128,7 +128,7 @@ VTKMeshShortestDistance
   // cout << "Vertex ID = " << subId << endl;
 
   // Find the vertex closest to the intersection
-  point = fltLocator->FindClosestPoint(ptLine);
+  point = fltLocator->FindClosestPoint((double*)ptLine);
   return subId == 0;
 }
 

@@ -1,6 +1,7 @@
 #include "global.h"
 
 std::vector<TagInfo> Global::vectorTagInfo;
+std::vector<LabelTriangle> Global::vectorLabelInfo;
 std::vector<TagTriangle> Global::vectorTagTriangles;
 std::vector<TagPoint> Global::vectorTagPoints;
 std::vector<TagEdge> Global::vectorTagEdges;

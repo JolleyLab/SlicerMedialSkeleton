@@ -12,6 +12,7 @@
 #include <vtkEventQtSlotConnect.h>
 #include <vtkInteractorStyleTrackballActor.h>
 #include <vtkProperty.h>
+#include <vtkLoopSubdivisionFilter.h>
 
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
@@ -160,6 +161,15 @@ EventQtSlotConnect::EventQtSlotConnect()
   //background color
   this->connect(this->pushButtonBckgndColor, SIGNAL(clicked()), this, SLOT(slot_setColor()));
 
+  //inflate option
+  this->connect(this->InflateCheckBox, SIGNAL(stateChanged(int)), this, SLOT(slot_inflate(int)));
+
+  //preview subdivision option
+  this->connect(this->previewSubdivideCheckBox, SIGNAL(stateChanged(int)), this, SLOT(slot_subdivisionPreview(int)));
+
+  //preview button
+  this->connect(this->previewPushButton, SIGNAL(clicked()), this, SLOT(slot_preview()));
+
   //set some default value
   this->eParameter->setValue(2);
   this->pParameter->setValue(1.2);
@@ -169,6 +179,13 @@ EventQtSlotConnect::EventQtSlotConnect()
   colorBckgnd.setGreen(0);
   colorBckgnd.setBlue(1);
 
+  std::string setname = "settings.ini";
+
+  if (!(bool)std::ifstream(setname.c_str())) {
+	  std::ofstream setfile("settings.ini");
+	  setfile.close();
+  }
+
   settingsFile = QApplication::applicationDirPath() + "/settings.ini";
   loadSettings(); 
 
@@ -177,6 +194,9 @@ EventQtSlotConnect::EventQtSlotConnect()
   this->qvtkWidget->GetRenderWindow()->AddRenderer(renderer);
   this->qvtkWidget->update();
 
+  timer = new QTimer;
+  connect(timer, SIGNAL(timeout()), this, SLOT(autoSave()));
+  
 };
 
 EventQtSlotConnect::~EventQtSlotConnect()
@@ -184,7 +204,11 @@ EventQtSlotConnect::~EventQtSlotConnect()
 	saveSettings();
 }
 
-
+void EventQtSlotConnect::autoSave() { 
+	std::string fileTemp = VTKfilename.substr(0, VTKfilename.length() - 4).append("Temp.vtk");
+	std::cout << "Automatically saved" << std::endl;
+	saveVTKFile(QString::fromStdString(fileTemp));
+}
 //Call the add tag dialog
 void EventQtSlotConnect::slot_addTag(){
 
@@ -491,6 +515,7 @@ void EventQtSlotConnect::slot_open(){
 	if (!fileName.isEmpty()) {
 		VTKfilename = fileName.toStdString();
 		readVTK(VTKfilename);
+		timer->start(60000);
 	}
 }
 
@@ -505,13 +530,18 @@ void EventQtSlotConnect::slot_save(){
 		tr(""),
 		tr("VTK Files (*.vtk)"),
 		&selectedFilter,
-		options);
-	
+		options);	
 
 	if (!fileName.isEmpty()){	
 		saveVTKFile(fileName);
 		saveParaViewFile(fileName);
 		saveCmrepFile(fileName);	
+		exportSubdivideMesh(fileName);
+		if (this->InflateCheckBox->isChecked()) {
+			double radius = this->radiusSpinBox->value();
+			InflateMedialModelWithBranches(fileName, radius);
+		}
+		
 	}
 }
 
@@ -539,8 +569,8 @@ void EventQtSlotConnect::slot_import()
 
 			th1Param.push_back(u11Temp);
 			th1Param.push_back(u21Temp);
-			th1Param.push_back(inw.v11->text().toStdString());
-			th1Param.push_back(inw.v21->text().toStdString());
+			th1Param.push_back("1"); 
+			th1Param.push_back("0"); 
 
 			std::vector<std::string> th2Param;
 
@@ -551,8 +581,8 @@ void EventQtSlotConnect::slot_import()
 
 			th2Param.push_back(u12Temp);
 			th2Param.push_back(u22Temp);
-			th2Param.push_back(inw.v12->text().toStdString());
-			th2Param.push_back(inw.v22->text().toStdString());
+			th2Param.push_back("1"); 
+			th2Param.push_back("0"); 
 
 			std::cout << "\nSigma value: " << sigma << " vox" << std::endl;
 			std::cout << "\nPre-thresholding parameters: \nu1: " << th1Param[0] << " u2: " << th1Param[1] << " v1: " << th1Param[2] << " v2: " << th1Param[3] << std::endl;
@@ -562,6 +592,121 @@ void EventQtSlotConnect::slot_import()
 		}
 		else
 			importNIFTI(filenames, false);
+	}
+}
+
+void EventQtSlotConnect::slot_preview()
+{
+	std::vector<double> radiusData;
+	vtkSmartPointer<vtkPolyData> previewMesh =
+		vtkSmartPointer<vtkPolyData>::New();
+	int numberOfSubdivisions;
+	if (this->previewSubdivideCheckBox->isChecked()) {
+		numberOfSubdivisions = this->previewSubdivideComboBox->currentIndex() + 1;
+	}
+	else {
+		numberOfSubdivisions = 0;
+	}
+
+	if (Global::vectorTagTriangles.size() > 0) {
+
+		vtkSmartPointer<vtkAppendPolyData> appendFilter =
+			vtkSmartPointer<vtkAppendPolyData>::New();
+
+		for (int i = 0; i < Global::vectorTagTriangles.size(); i++)
+		{
+			vtkSmartPointer<vtkActorCollection> actorCollection =
+				vtkSmartPointer<vtkActorCollection>::New();
+			Global::vectorTagTriangles[i].triActor->GetActors(actorCollection);
+			vtkPolyData* polyData = vtkPolyData::SafeDownCast(actorCollection->GetLastActor()->GetMapper()->GetInput());
+			appendFilter->AddInputData(polyData);
+		}
+
+		vtkSmartPointer<vtkCleanPolyData> cleanPoly =
+			vtkSmartPointer<vtkCleanPolyData>::New();
+
+		cleanPoly->SetInputConnection(appendFilter->GetOutputPort());
+		cleanPoly->Update();
+
+		if (numberOfSubdivisions > 0) {
+			vtkSmartPointer<vtkLoopSubdivisionFilter> subdivisionFilter =
+				vtkSmartPointer<vtkLoopSubdivisionFilter>::New();
+
+			subdivisionFilter->SetNumberOfSubdivisions(numberOfSubdivisions);
+			subdivisionFilter->SetInputData(cleanPoly->GetOutput());
+			subdivisionFilter->Update();
+
+			vtkSmartPointer<vtkActorCollection> actors = mouseInteractor->GetDefaultRenderer()->GetActors();
+			vtkSmartPointer<vtkActor> actor0 = static_cast<vtkActor *>(actors->GetItemAsObject(0));
+			vtkSmartPointer<vtkDataSet> vtkdata = actor0->GetMapper()->GetInputAsDataSet();
+			vtkDoubleArray* radiusArray = (vtkDoubleArray*)vtkdata->GetPointData()->GetArray("Radius");
+			vtkSmartPointer<vtkPolyData> outFilter = subdivisionFilter->GetOutput();
+
+			for (int i = 0; i < subdivisionFilter->GetOutput()->GetNumberOfPoints(); i++)
+			{
+				double pos[3];
+				outFilter->GetPoint(i, pos);
+
+				double minDistance = DBL_MAX;
+				double pointRadius = 0.0;
+
+				for (vtkIdType j = 0; j < vtkdata->GetNumberOfPoints(); j++) {
+					double p[3];
+					vtkdata->GetPoint(j, p);
+
+					double dist = std::sqrt(std::pow(pos[0] - p[0], 2) + std::pow(pos[1] - p[1], 2) + std::pow(pos[2] - p[2], 2));
+					//Find the closet vertex
+					if (dist < minDistance) {
+						minDistance = dist;
+						pointRadius = radiusArray->GetValue(j);
+					}
+				}
+				radiusData.push_back(pointRadius);
+			}
+
+			previewMesh = subdivisionFilter->GetOutput();
+		}
+		else {
+			for (int i = 0; i < cleanPoly->GetOutput()->GetNumberOfPoints(); i++) {
+				for (int j = 0; j < Global::vectorTagPoints.size(); j++)
+				{
+					if (Global::vectorTagPoints[j].pos[0] == cleanPoly->GetOutput()->GetPoint(i)[0] &&
+						Global::vectorTagPoints[j].pos[1] == cleanPoly->GetOutput()->GetPoint(i)[1] &&
+						Global::vectorTagPoints[j].pos[2] == cleanPoly->GetOutput()->GetPoint(i)[2])
+					{
+						radiusData.push_back(Global::vectorTagPoints[j].radius);
+					}
+				}
+			}
+
+			previewMesh = cleanPoly->GetOutput();
+		}
+	}
+
+	PreviewWindow *pw = new PreviewWindow(VTKfilename, radiusData, previewMesh);
+	pw->show(); 
+}
+
+void EventQtSlotConnect::slot_inflate(int state) {
+	if (state == Qt::Unchecked) {
+		this->InflateCheckBox->setChecked(false);
+		this->radiusSpinBox->setDisabled(true);
+	}
+	else {
+		this->InflateCheckBox->setChecked(true);
+		this->radiusSpinBox->setDisabled(false);
+	}
+}
+
+void EventQtSlotConnect::slot_subdivisionPreview(int state)
+{
+	if (state == Qt::Unchecked) {
+		this->previewSubdivideCheckBox->setChecked(false);
+		this->previewSubdivideComboBox->setDisabled(true);
+	}
+	else {
+		this->previewSubdivideCheckBox->setChecked(true);
+		this->previewSubdivideComboBox->setDisabled(false);
 	}
 }
 
@@ -593,8 +738,10 @@ void EventQtSlotConnect::slot_meshStateChange(int state){
 		mouseInteractor->meshState = SHOW;
 		for(int i = 0; i < Global::vectorTagTriangles.size(); i++)
 		{
-			hideTriLabel[i] = 0;
 			Global::vectorTagTriangles[i].triActor->VisibilityOn();
+		}
+		for (int i = 0; i < hideTriLabel.size(); i++) {
+			hideTriLabel[i] = 0;
 		}
 	}
 	else
@@ -603,8 +750,10 @@ void EventQtSlotConnect::slot_meshStateChange(int state){
 		mouseInteractor->meshState = HIDE;
 		for(int i = 0; i < Global::vectorTagTriangles.size(); i++)
 		{
-			hideTriLabel[i] = 1;
 			Global::vectorTagTriangles[i].triActor->VisibilityOff();
+		}
+		for (int i = 0; i < hideTriLabel.size(); i++) {
+			hideTriLabel[i] = 1;
 		}
 	}
 	this->qvtkWidget->GetRenderWindow()->Render();
@@ -850,6 +999,7 @@ void EventQtSlotConnect::slot_skelTransparentChanged(int value)
 		actor->GetProperty()->SetOpacity(trans);
 		this->qvtkWidget->update();
 	}
+	this->qvtkWidget->GetRenderWindow()->Render();
 }
 
 void EventQtSlotConnect::slot_meshTransparentChanged(int value)
@@ -858,8 +1008,9 @@ void EventQtSlotConnect::slot_meshTransparentChanged(int value)
 	for (int i = 0; i < Global::vectorTagTriangles.size(); i++)
 	{
 		Global::vectorTagTriangles[i].triActor->GetProperty()->SetOpacity(trans);
+		this->qvtkWidget->update();
 	}
-	this->qvtkWidget->update();
+	this->qvtkWidget->GetRenderWindow()->Render();
 }
 
 void EventQtSlotConnect::slot_trilabelChanged(int index)	
@@ -969,9 +1120,17 @@ void EventQtSlotConnect::createActions()
 	saveAct->setShortcut(tr("Ctrl+S"));
 	connect(saveAct, SIGNAL(triggered()), this, SLOT(slot_save()));
 
-	importAct = new QAction(tr("&Import nifti.."), this);
+	importAct = new QAction(tr("&Import NifTI.."), this);
 	importAct->setShortcut(tr("Ctrl+I"));
 	connect(importAct, SIGNAL(triggered()), this, SLOT(slot_import()));
+
+	undoAct = new QAction(tr("Undo"), this);
+	undoAct->setShortcut(tr("Ctrl+Z"));
+	connect(undoAct, SIGNAL(triggered()), mouseInteractor, SLOT(slot_undo()));
+
+	redoAct = new QAction(tr("Redo"), this);
+	redoAct->setShortcut(tr("Ctrl+Shift+Z"));
+	connect(redoAct, SIGNAL(triggered()), mouseInteractor, SLOT(slot_redo()));
 }
 
 void EventQtSlotConnect::createMenus()
@@ -981,6 +1140,11 @@ void EventQtSlotConnect::createMenus()
 	fileMenu->addAction(saveAct);
 	fileMenu->addAction(importAct);
 	menuBar()->addMenu(fileMenu);
+
+	fileEdit = new QMenu(tr("Edit"), this);
+	fileEdit->addAction(undoAct);
+	fileEdit->addAction(redoAct);
+	menuBar()->addMenu(fileEdit);
 }
 
 QComboBox* EventQtSlotConnect::getTagComboBox(){
@@ -990,7 +1154,7 @@ QComboBox* EventQtSlotConnect::getTagComboBox(){
 void EventQtSlotConnect::readCustomDataLabel(vtkFloatArray* labelDBL)
 {
 	Global::labelData.clear();
-	for(int i = 0; i < labelDBL->GetSize(); i++)
+	for(int i = 0; i < labelDBL->GetSize() - 1; i++)
 	{
 		Global::labelData.push_back(labelDBL->GetValue(i));
 	}
@@ -998,7 +1162,7 @@ void EventQtSlotConnect::readCustomDataLabel(vtkFloatArray* labelDBL)
 
 void EventQtSlotConnect::readCustomDataTri(vtkFloatArray* triDBL)
 {
-	for(vtkIdType i = 0; i < triDBL->GetSize();)
+	for(vtkIdType i = 0; i < triDBL->GetSize() - 1;)
 	{
 		vtkSmartPointer<vtkPoints> pts =
 			vtkSmartPointer<vtkPoints>::New();
@@ -1061,7 +1225,6 @@ void EventQtSlotConnect::readCustomDataTri(vtkFloatArray* triDBL)
 			vtkSmartPointer<vtkProperty>::New();
 		backPro->SetColor(Global::backCol);
 		actor->SetBackfaceProperty(backPro);
-		
 
 		tri.centerPos[0] = actor->GetCenter()[0];
 		tri.centerPos[1] = actor->GetCenter()[1];
@@ -1074,7 +1237,7 @@ void EventQtSlotConnect::readCustomDataTri(vtkFloatArray* triDBL)
 
 void EventQtSlotConnect::readCustomDataEdge(vtkFloatArray* edgeDBL)
 {
-	for(int i = 0; i < edgeDBL->GetSize(); i += 5)
+	for(int i = 0; i < edgeDBL->GetSize() - 1; i += 5)
 	{
 		TagEdge edge;
 		edge.ptId1 = edgeDBL->GetValue(i);
@@ -1089,7 +1252,7 @@ void EventQtSlotConnect::readCustomDataEdge(vtkFloatArray* edgeDBL)
 
 void EventQtSlotConnect::readCustomDataTag(vtkFloatArray* tagDBL, vtkStringArray* tagStr)
 {
-	for(int i = 0, j = 0; i < tagDBL->GetSize(); i += 5, j++)
+	for(int i = 0, j = 0; i < tagDBL->GetSize() - 1; i += 5, j++)
 	{
 		TagInfo info;
 		info.tagType = tagDBL->GetValue(i);
@@ -1108,9 +1271,31 @@ void EventQtSlotConnect::readCustomDataTag(vtkFloatArray* tagDBL, vtkStringArray
 	}
 }
 
+void EventQtSlotConnect::readCustomDataTriLabel(vtkFloatArray* tagTriDBL, vtkStringArray* tagTriStr)
+{
+	for (int i = 0, j = 0; i < tagTriDBL->GetSize() - 1; i += 3, j++)
+	{
+		LabelTriangle lt;
+
+		QPixmap pix(22, 22);
+		QColor qc = QColor(tagTriDBL->GetValue(i), tagTriDBL->GetValue(i+1), tagTriDBL->GetValue(i+2));
+
+		lt.labelName = tagTriStr->GetValue(j).c_str();
+		lt.labelColor = qc;
+		Global::vectorLabelInfo.push_back(lt);
+		triLabelColors.push_back(qc);
+		hideTriLabel.push_back(0);
+		mouseInteractor->triLabelColors.push_back(qc);
+
+		pix.fill(qc);
+		this->TriLabelComboBox->addItem(pix, QString::fromUtf8(tagTriStr->GetValue(j)));
+		mouseInteractor->currentTriIndex = 0;
+	}
+}
+
 void EventQtSlotConnect::readCustomDataPoints(vtkFloatArray* ptsDBL)
 {
-	for(int i = 0; i < ptsDBL->GetSize(); i += 7)
+	for(int i = 0; i < ptsDBL->GetSize() - 1; i += 7)
 	{
 		TagPoint tagPt;
 		tagPt.pos[0] = ptsDBL->GetValue(i);
@@ -1148,24 +1333,40 @@ void EventQtSlotConnect::readCustomDataPoints(vtkFloatArray* ptsDBL)
 void EventQtSlotConnect::readCustomData(vtkPolyData *polydata)
 {
 	vtkFloatArray* labelDBL = (vtkFloatArray*)polydata->GetFieldData()->GetArray("Label");
-	readCustomDataLabel(labelDBL);	
+	if (labelDBL != NULL)
+		readCustomDataLabel(labelDBL);
 
 	vtkFloatArray* tagDBL = (vtkFloatArray*)polydata->GetFieldData()->GetArray("TagInfo");
 	vtkStringArray* tagStr = (vtkStringArray*)polydata->GetFieldData()->GetAbstractArray("TagName");
-	std::cout<<" string size "<<tagStr->GetSize()<<std::endl;
-	readCustomDataTag(tagDBL, tagStr);
+	if (tagStr != NULL){
+		std::cout << "string size " << tagStr->GetSize() - 1 << std::endl;
+		readCustomDataTag(tagDBL, tagStr);
+	}
 
 	vtkFloatArray* ptsDBL = (vtkFloatArray*)polydata->GetFieldData()->GetArray("TagPoints");
-	readCustomDataPoints(ptsDBL);
-	std::cout<<"after tag point"<<std::endl;
+	if (ptsDBL != NULL) {
+		std::cout << "after tag point" << std::endl;
+		readCustomDataPoints(ptsDBL);
+	}
+
+	vtkFloatArray* tagTriDBL = (vtkFloatArray*)polydata->GetFieldData()->GetArray("LabelTriangleColor");
+	vtkStringArray* tagTriStr = (vtkStringArray*)polydata->GetFieldData()->GetAbstractArray("LabelTriangleName");
+	if (tagTriStr != NULL) {
+		std::cout << "label size " << tagTriStr->GetSize() << std::endl;
+		readCustomDataTriLabel(tagTriDBL, tagTriStr);
+	}
 
 	vtkFloatArray* triDBL = (vtkFloatArray*)polydata->GetFieldData()->GetArray("TagTriangles");
-	readCustomDataTri(triDBL);
-	std::cout<<"after tri point"<<std::endl;
-
+	if (triDBL != NULL) {
+		std::cout << "after tri point" << std::endl;
+		readCustomDataTri(triDBL);
+	}
+	
 	vtkFloatArray* edgeDBL = (vtkFloatArray*)polydata->GetFieldData()->GetArray("TagEdges");
-	readCustomDataEdge(edgeDBL);
-	std::cout<<"after tagEdge point"<<std::endl;
+	if (edgeDBL != NULL) {
+		std::cout << "after tagEdge point" << std::endl;
+		readCustomDataEdge(edgeDBL);
+	}
 }
 
 void EventQtSlotConnect::readVTK(std::string filename){
@@ -1213,9 +1414,13 @@ void EventQtSlotConnect::readVTK(std::string filename){
 	// A renderer and render window
 	vtkSmartPointer<vtkRenderer> renderer =
 		vtkSmartPointer<vtkRenderer>::New();
-
+	this->qvtkWidget->GetRenderWindow()->SetAlphaBitPlanes(1);
+	this->qvtkWidget->GetRenderWindow()->SetMultiSamples(0);
+	renderer->SetUseDepthPeeling(1);
+	renderer->SetMaximumNumberOfPeels(4);
+	renderer->SetOcclusionRatio(0.1);
 	this->qvtkWidget->GetRenderWindow()->GetInteractor()->SetRenderWindow(this->qvtkWidget->GetRenderWindow());
-
+	
 	//renderWindowInteractor->SetInteractorStyle( style );	
 	renderer->AddActor ( actor );
 	
@@ -1237,9 +1442,14 @@ void EventQtSlotConnect::readVTK(std::string filename){
 	Global::vectorTagInfo.clear();
 	Global::triNormalActors.clear();
 	Global::selectedTag = 0;
+	Global::vectorLabelInfo.clear();
+	mouseInteractor->triLabelColors.clear();
+	triLabelColors.clear();
+	hideTriLabel.clear();
 	this->comboBoxTagPoint->clear();
 	this->checkBoxHideMesh->setChecked(false);
 	this->checkBoxHideSkel->setChecked(false);
+	this->TriLabelComboBox->clear();
 	mouseInteractor->operationFlag = VIEW;
 	setToolButton(VIEW);
 
@@ -1268,17 +1478,21 @@ void EventQtSlotConnect::readVTK(std::string filename){
 	mouseInteractor->setNormalGenerator(normalGenerator);
 
 	//see triangle
-	vtkDoubleArray* triDBL = (vtkDoubleArray*)polydata->GetFieldData()->GetArray("TagTriangles");
-	if(triDBL != NULL)
+	//vtkDoubleArray* triDBL = (vtkDoubleArray*)polydata->GetFieldData()->GetArray("TagPoints");
+	vtkDoubleArray* triDBL = (vtkDoubleArray*)polydata->GetFieldData()->GetArray("TagInfo");
+
+	if (triDBL != NULL)
 	{
 		readCustomData(polydata);
 	}
+
 	this->PointNumber->setText(QString::number(Global::vectorTagPoints.size()));
 	this->TriangleNumber->setText(QString::number(Global::vectorTagTriangles.size()));
     /*this->pushButtonUndo->setEnabled(false);
     this->pushButtonRedo->setEnabled(false);*/
 
 	this->ViewToolButton->setEnabled(false);
+	this->InflateCheckBox->setChecked(false);
 }
 
 itk::SmartPointer<itk::OrientedRASImage<double, 3>> EventQtSlotConnect::threshold(
@@ -1531,9 +1745,9 @@ void EventQtSlotConnect::saveVTKFile(QString fileName)
 #elif _WIN32
 	writer->SetFileName((fileName.toStdString().substr(0, fileName.toStdString().length() - 4)).append("Affix.vtk").c_str());	
 #elif __APPLE__
-	writer->SetFileName((fileName.toStdString()).append("Affix.vtk").c_str());	
+	writer->SetFileName((fileName.toStdString().substr(0, fileName.toStdString().length() - 4)).append("Affix.vtk").c_str());
 #elif __linux__
-	writer->SetFileName((fileName.toStdString()).append("Affix.vtk").c_str());	
+	writer->SetFileName((fileName.toStdString().substr(0, fileName.toStdString().length() - 4)).append("Affix.vtk").c_str());
 #endif
 	
 	vtkSmartPointer<vtkPolyData> finalPolyData =
@@ -1543,6 +1757,12 @@ void EventQtSlotConnect::saveVTKFile(QString fileName)
 
 	if(finalPolyData->GetFieldData()->GetArray("Label")){
 		finalPolyData->GetFieldData()->RemoveArray("Label");
+	}
+	if (finalPolyData->GetFieldData()->GetArray("LabelTriangleName")) {
+		finalPolyData->GetFieldData()->RemoveArray("LabelTriangleName");
+	}
+	if (finalPolyData->GetFieldData()->GetArray("LabelTriangleColor")) {
+		finalPolyData->GetFieldData()->RemoveArray("LabelTriangleColor");
 	}
 	if(finalPolyData->GetFieldData()->GetArray("TagTriangles")){
 		finalPolyData->GetFieldData()->RemoveArray("TagTriangles");
@@ -1556,7 +1776,7 @@ void EventQtSlotConnect::saveVTKFile(QString fileName)
 	if(finalPolyData->GetFieldData()->GetArray("TagInfo")){
 		finalPolyData->GetFieldData()->RemoveArray("TagInfo");
 	}
-
+	
 	vtkSmartPointer<vtkFieldData> field =
 		vtkSmartPointer<vtkFieldData>::New();
 
@@ -1568,6 +1788,26 @@ void EventQtSlotConnect::saveVTKFile(QString fileName)
 	if(Global::labelData.size() !=0 )
 		//finalPolyData->GetFieldData()->AddArray(fltArray1);
 		field->AddArray(fltArray1);
+
+	vtkSmartPointer<vtkStringArray> strArray2_1 =
+		vtkSmartPointer<vtkStringArray>::New();
+	strArray2_1->SetName("LabelTriangleName");
+
+	vtkSmartPointer<vtkFloatArray> fltArray2_1 =
+		vtkSmartPointer<vtkFloatArray>::New();
+	fltArray2_1->SetName("LabelTriangleColor");
+
+	for (int i = 0; i < Global::vectorLabelInfo.size(); i++) {
+		strArray2_1->InsertNextValue(Global::vectorLabelInfo[i].labelName.c_str());
+		fltArray2_1->InsertNextValue(Global::vectorLabelInfo[i].labelColor.red());
+		fltArray2_1->InsertNextValue(Global::vectorLabelInfo[i].labelColor.green());
+		fltArray2_1->InsertNextValue(Global::vectorLabelInfo[i].labelColor.blue());
+	}
+
+	if (Global::vectorLabelInfo.size() != 0) {
+		field->AddArray(strArray2_1);
+		field->AddArray(fltArray2_1);
+	}
 
 	vtkSmartPointer<vtkFloatArray> fltArray2 = 
 		vtkSmartPointer<vtkFloatArray>::New();
@@ -1739,9 +1979,10 @@ void EventQtSlotConnect::saveParaViewFile(QString fileName)
 
 		vtkSmartPointer<vtkFloatArray> fltArray8 =
 			vtkSmartPointer<vtkFloatArray>::New();
-		fltArray8->SetName("TriLabel");
+		// fltArray8->SetName("TriLabel");
+		fltArray8->SetName("Label");
 		for(int i = 0; i < Global::vectorTagTriangles.size(); i++)
-			fltArray8->InsertNextValue(Global::vectorTagTriangles[i].index);
+			fltArray8->InsertNextValue(Global::vectorTagTriangles[i].index + 1);
 
 		cleanPoly->GetOutput()->GetPointData()->AddArray(fltArray6);
 		cleanPoly->GetOutput()->GetPointData()->AddArray(fltArray7);
@@ -1753,6 +1994,100 @@ void EventQtSlotConnect::saveParaViewFile(QString fileName)
 		writerParaView->Write();		
 	}
 		
+}
+
+void EventQtSlotConnect::exportSubdivideMesh(QString fileName)
+{
+	int numberOfSubdivisions = this->SubLevelComboBox->currentIndex();
+	fileName.replace(".vtk", "");
+	if (Global::vectorTagTriangles.size() > 0 && numberOfSubdivisions > 0)
+	{
+		//////////////save another file for ParaView////////////////////
+		vtkSmartPointer<vtkGenericDataObjectWriter> writerSubParaView =
+			vtkSmartPointer<vtkGenericDataObjectWriter>::New();
+#ifdef _WIN64
+		writerSubParaView->SetFileName(fileName.toStdString().append("Subdivide.vtk").c_str());
+#elif _WIN32
+		writerSubParaView->SetFileName(fileName.toStdString().append("Subdivide.vtk").c_str());
+#elif __APPLE__
+		writerSubParaView->SetFileName(fileName.toStdString().append("Subdivide.vtk").c_str());
+#elif __linux__
+		writerSubParaView->SetFileName(fileName.toStdString().append("Subdivide.vtk").c_str());
+#endif
+	
+		//Append the two meshes 
+		vtkSmartPointer<vtkAppendPolyData> appendFilter =
+			vtkSmartPointer<vtkAppendPolyData>::New();
+
+		for (int i = 0; i < Global::vectorTagTriangles.size(); i++)
+		{
+			vtkSmartPointer<vtkActorCollection> actorCollection =
+				vtkSmartPointer<vtkActorCollection>::New();
+			Global::vectorTagTriangles[i].triActor->GetActors(actorCollection);
+			vtkPolyData* polyData = vtkPolyData::SafeDownCast(actorCollection->GetLastActor()->GetMapper()->GetInput());
+			appendFilter->AddInputData(polyData);
+		}
+
+		vtkSmartPointer<vtkCleanPolyData> cleanPoly =
+			vtkSmartPointer<vtkCleanPolyData>::New();
+
+		cleanPoly->SetInputConnection(appendFilter->GetOutputPort());
+		cleanPoly->Update();
+
+		//std::vector<int> labelData;
+		std::vector<double> radiusData;
+
+		vtkSmartPointer<vtkLoopSubdivisionFilter> subdivisionFilter =
+			vtkSmartPointer<vtkLoopSubdivisionFilter>::New();
+
+		subdivisionFilter->SetNumberOfSubdivisions(numberOfSubdivisions);
+		subdivisionFilter->SetInputData(cleanPoly->GetOutput());
+		subdivisionFilter->Update();
+
+		vtkSmartPointer<vtkActorCollection> actors = mouseInteractor->GetDefaultRenderer()->GetActors();
+		vtkSmartPointer<vtkActor> actor0 = static_cast<vtkActor *>(actors->GetItemAsObject(0));
+		vtkSmartPointer<vtkDataSet> vtkdata = actor0->GetMapper()->GetInputAsDataSet();
+		vtkDoubleArray* radiusArray = (vtkDoubleArray*)vtkdata->GetPointData()->GetArray("Radius");
+		vtkSmartPointer<vtkPolyData> outFilter = subdivisionFilter->GetOutput();
+
+		for (int i = 0; i < subdivisionFilter->GetOutput()->GetNumberOfPoints(); i++)
+		{
+			double pos[3];
+			outFilter->GetPoint(i, pos);
+
+			//std::cout << "Point " << i << ": " << pos[0] << " "
+			//	<< pos[1] << " "
+			//	<< pos[2] << std::endl;
+
+			double minDistance = DBL_MAX;
+			double pointRadius = 0.0;  
+
+			for (vtkIdType j = 0; j < vtkdata->GetNumberOfPoints(); j++) {
+				double p[3];
+				vtkdata->GetPoint(j, p);
+				
+				double dist = std::sqrt(std::pow(pos[0] - p[0], 2) + std::pow(pos[1] - p[1], 2) + std::pow(pos[2] - p[2], 2));
+				//Find the closet vertex
+				if (dist < minDistance) {
+					minDistance = dist;
+					pointRadius = radiusArray->GetValue(j);
+				}
+			}
+			radiusData.push_back(pointRadius);
+		}
+
+		vtkSmartPointer<vtkFloatArray> fltArray7 =
+			vtkSmartPointer<vtkFloatArray>::New();
+		fltArray7->SetName("Radius");
+		for (int i = 0; i < radiusData.size(); i++)
+			fltArray7->InsertNextValue(radiusData[i]);
+
+		subdivisionFilter->GetOutput()->GetPointData()->AddArray(fltArray7);
+		writerSubParaView->SetInputData(subdivisionFilter->GetOutput());
+		writerSubParaView->SetFileTypeToASCII();
+		writerSubParaView->Update();
+		writerSubParaView->Write();
+	}
 }
 
 void EventQtSlotConnect::saveCmrepFile(QString fileName)
@@ -1798,15 +2133,12 @@ void EventQtSlotConnect::saveCmrepFile(QString fileName)
 		case 3:
 			cmrepFile<<"3";
 			break;
-		case 4:
-			cmrepFile<<"4";
-			break;
 		}
 	}
 	cmrepFile << std::endl;
 
 	cmrepFile<<"Grid.Model.Coefficient.FileName = ";
-	std::string name = fileName.toStdString();
+	std::string name = (fileName.toStdString()).append(".vtk");
 	int lastSlash;
 
 #ifdef _WIN64
@@ -1858,6 +2190,7 @@ void EventQtSlotConnect::saveCmrepFile(QString fileName)
 
 void EventQtSlotConnect::loadSettings()
 {
+	std::cout << settingsFile.toStdString() << std::endl;
 	QSettings settings(settingsFile, QSettings::IniFormat);
 	QString pText = settings.value("path", "").toString();
 	this->pathQvoronoi->setText(pText);
@@ -1870,8 +2203,303 @@ void EventQtSlotConnect::saveSettings()
 	settings.setValue("path", pText);
 }
 
+//from pyushkevich/cmrep/src/ConstrainedCMRepTest.cxx
+template<class T>
+unsigned int count_nnz(vnl_sparse_matrix<T> &mat)
+{
+	unsigned int nnz = 0;
+	for (unsigned int i = 0; i < mat.rows(); i++)
+	{
+		auto &r = mat.get_row(i);
+		for (unsigned int j = 0; j < r.size(); j++)
+		{
+			if (r[j].second != 0.0)
+				nnz++;
+		}
+	}
+	return nnz;
+}
+
+//void EventQtSlotConnect::InflateMedialModelWithBranches(const char *fn_input, const char *fn_output, double rad, int edge_label)
+void EventQtSlotConnect::InflateMedialModelWithBranches(QString fn_output, double rad)
+{
+	// This inflation code accepts non-mesh medial surfaces, i.e., medial surfaces with branches. We can no
+	// longer use the half-edge construct.
+	fn_output.replace(".vtk", "");
+
+	// An edge is a pair of vertices, always stored in sorted order
+	typedef std::pair<unsigned int, unsigned int> Edge;
+
+	// A reference to a triangle edge (tri index, edge index, forward/backward)
+	typedef std::tuple<unsigned int, unsigned int, bool> TriEdgeRef;
+
+	// Each edge is associated with some number of triangles
+	typedef std::map<Edge, std::list<TriEdgeRef> > EdgeTriMap;
+
+	// Edge-triangle map
+	EdgeTriMap etm;
+
+	// List of duplicate triangles
+	std::vector<Triangle> tdup;
+
+	// List of triangle normals
+	typedef vnl_vector_fixed<double, 3> Vec3;
+	std::vector<Vec3> tnorm;
+
+	// Find all the edges in the mesh
+	// for (unsigned int i = 0; i < pd->GetNumberOfCells(); i++)
+	for (unsigned int i = 0; i < Global::vectorTagTriangles.size(); i++)
+	{
+		// Create duplicates of the triangle with opposite windings
+		Triangle t1;
+		t1.vertices[0] = Global::vectorTagTriangles[i].id1;
+		t1.vertices[1] = Global::vectorTagTriangles[i].id2;
+		t1.vertices[2] = Global::vectorTagTriangles[i].id3;
+		tdup.push_back(t1);
+
+		Triangle t2;
+		t2.vertices[0] = Global::vectorTagTriangles[i].id3;
+		t2.vertices[1] = Global::vectorTagTriangles[i].id2;
+		t2.vertices[2] = Global::vectorTagTriangles[i].id1;
+		tdup.push_back(t2);
+
+		// Compute the normals of the two triangles
+		Vec3 A(Global::vectorTagTriangles[i].p1);
+		Vec3 B(Global::vectorTagTriangles[i].p2);
+		Vec3 C(Global::vectorTagTriangles[i].p3);
+		Vec3 N = vnl_cross_3d(B - A, C - A).normalize();
+
+		tnorm.push_back(N);
+		tnorm.push_back(-N);
+	}
+
+	// Find edges across the duplicate triangles
+	for (unsigned int i = 0; i < tdup.size(); i++)
+	{
+		for (unsigned int k = 0; k < 3; k++)
+		{
+			size_t v1 = tdup[i].vertices[(k + 1) % 3]; //1>2>0
+			size_t v2 = tdup[i].vertices[(k + 2) % 3]; //2>0>1
+			Edge ek = make_pair(min(v1, v2), max(v1, v2));
+
+			// Add the triangle to this edge, marking it as either forward-traversed
+			// or backward traversed.
+			etm[ek].push_back(std::make_tuple(i, k, v1 > v2)); //create a tuple 
+		}
+	}
+
+	// For each edge, find the triangles that are adjacent across the edge. Adjacent
+	// triangles must traverse the edge in opposite order.
+	for (auto &eit : etm)
+	{
+		// Get the edge vector direction
+		Vec3 e_X1(Global::vectorTagPoints[eit.first.first].pos);
+		Vec3 e_X2(Global::vectorTagPoints[eit.first.second].pos);
+
+		for (auto &tref : eit.second)
+		{
+			// Get the normal of the current triangle
+			unsigned int i_tri = std::get<0>(tref);
+			unsigned int i_tri_edge_idx = std::get<1>(tref);
+			bool winding = std::get<2>(tref);
+
+			const Vec3 &N = tnorm[i_tri];
+			Vec3 Z = (e_X2 - e_X1).normalize();
+			if (!winding)
+				Z = -Z;
+			Vec3 X = vnl_cross_3d(Z, N);
+
+			// Find the triangle that is closest by converting each opposite-winded triangle
+			// to an angle and selecting the one with the minimum angle
+			unsigned int opp_tri = NOID, opp_tri_edge_idx = -1;
+			double min_angle = 0.0;
+			for (auto &tref_test : eit.second)
+			{
+				// Only consider opposite winding
+				if (std::get<2>(tref_test) != std::get<2>(tref))
+				{
+					// Find the 'X' of the test triangle
+					unsigned int i_tri_test = std::get<0>(tref_test);
+					const Vec3 &N_test = -tnorm[i_tri_test];
+					Vec3 X_test = vnl_cross_3d(Z, N_test);
+
+					// Find the angle with the current triangle.
+					double a_test = (i_tri / 2 == i_tri_test / 2)
+						? vnl_math::twopi
+						: atan2(dot_product(X_test, N), dot_product(X_test, X));
+					if (a_test <= 0.0)
+						a_test += vnl_math::twopi;
+
+					printf("Angle of triangle %d with triangle %d over edge (%d,%d) is %f\n",
+						i_tri, i_tri_test, eit.first.first, eit.first.second, a_test);
+
+					// Is this the best match
+					if (opp_tri == NOID || a_test < min_angle)
+					{
+						opp_tri = i_tri_test;
+						opp_tri_edge_idx = std::get<1>(tref_test);
+						min_angle = a_test;
+					}
+				}
+			}
+
+			// We can now mark the neighbor of the triangle across this edge
+			tdup[i_tri].neighbors[i_tri_edge_idx] = opp_tri;
+			tdup[i_tri].nedges[i_tri_edge_idx] = (short)opp_tri_edge_idx;
+
+			printf("Triangle %d matched to triangle %d\n", i_tri, opp_tri);
+		}
+	}
+
+	// Create a vertex adjacency matrix. The rows/columns refer to the triangle vertices
+	// which are at this point all considered to be disjoint points. When the adjacency
+	// matrix contains 1, this means that the two vertices are actually the same point
+	vnl_sparse_matrix<int> tv_adj(tdup.size() * 3, tdup.size() * 3);
+
+	// Visit each edge in each triangle and match the vertices with the opposite edge
+	// in the opposite triangle
+	for (unsigned int i = 0; i < tdup.size(); i++)
+	{
+		for (unsigned int k = 0; k < 3; k++)
+		{
+			// Add identity element to matrix
+			tv_adj(i * 3 + k, i * 3 + k) = 1;
+
+			// Take triangle that's opposite
+			unsigned int i_opp = tdup[i].neighbors[k];
+			if (i_opp == NOID)
+				std::cout << "Exception: Triangle missing neighbor" << std::endl;
+
+			// Set the matches
+			unsigned int k_opp = tdup[i].nedges[k];
+			unsigned int v1 = (k + 1) % 3, v2 = (k + 2) % 3;
+			unsigned int v1_opp = (k_opp + 1) % 3, v2_opp = (k_opp + 2) % 3;
+
+			tv_adj(i * 3 + v1, i_opp * 3 + v2_opp) = 1;
+			tv_adj(i * 3 + v2, i_opp * 3 + v1_opp) = 1;
+		}
+	}
+
+	// Find the connected components in the adjacency matrix. A lazy way to do this is to take powers of the
+	// matrix until it converges.
+	unsigned int nnz_last = count_nnz(tv_adj);
+	printf("Adjacency matrix, nnz = %d\n", nnz_last);
+	vnl_sparse_matrix<int> tv_adj_pow = tv_adj * tv_adj;
+	while (count_nnz(tv_adj_pow) > nnz_last)
+	{
+		nnz_last = count_nnz(tv_adj_pow);
+		tv_adj_pow = tv_adj_pow * tv_adj;
+		printf("Adjacency multiplication, nnz = %d\n", nnz_last);
+	}
+
+	// Go through and remap the disjoint vertices to new vertices
+	std::vector<unsigned int> vnew(tdup.size() * 3, NOID);
+	unsigned int vcurr = 0;
+	for (unsigned int i = 0; i < tdup.size() * 3; i++)
+	{
+		if (vnew[i] == NOID)
+		{
+			// Assign a new vertex ID to this vertex
+			vnew[i] = vcurr;
+
+			// Assign it to every other vertex in its row
+			auto &row = tv_adj_pow.get_row(i);
+			for (unsigned int j = 0; j < row.size(); j++)
+			{
+				if (vnew[row[j].first] != NOID && vnew[row[j].first] != vcurr)
+					std::cout << "Exception: Vertex traversal logic violation" << std::endl;
+
+				vnew[row[j].first] = vcurr;
+			}
+			vcurr++;
+		}
+	} 
+	// Now we have a valid mesh structure in place. We can store this into a proper
+	// triangle array
+	vnl_matrix<unsigned int> m_tri(tdup.size(), 3);
+
+	// We also need to compute the positions of the new vertices, i.e., by pushing them out
+	// along the outward normals. We initialize each point to its original mesh location and
+	// then add to the vertex all the normals of all the triangles that contain it
+	vnl_matrix<double> m_pt(vcurr, 3), m_pt_offset(vcurr, 3);
+	std::vector<unsigned int> valence(vcurr, 0);
+
+	// Create the medial index array - this is just the original medial vertex
+	vnl_vector<int> m_mindex(vcurr);
+
+	// First pass through triangles, assigning new vertices and vertex coordinates
+	for (unsigned int i = 0; i < tdup.size(); i++)
+	{
+		// Compute the triangle normal and center
+		Vec3 P[] = {
+			Vec3(Global::vectorTagPoints[tdup[i].vertices[0]].pos),
+			Vec3(Global::vectorTagPoints[tdup[i].vertices[1]].pos),
+			Vec3(Global::vectorTagPoints[tdup[i].vertices[2]].pos) };
+
+		Vec3 N = vnl_cross_3d(P[1] - P[0], P[2] - P[0]).normalize();
+		Vec3 C = (P[0] + P[1] + P[2]) / 3.0;
+
+		for (unsigned int k = 0; k < 3; k++)
+		{
+			// Assign the new vertex
+			m_tri(i, k) = vnew[i * 3 + k];
+
+			// Get the coordinate of this vertex
+			m_pt.set_row(m_tri(i, k), P[k]);
+
+			// Add up the valence of this vertex
+			valence[m_tri(i, k)]++;
+
+			// Add up to the shift vector
+			m_pt_offset.set_row(m_tri(i, k), m_pt_offset.get_row(m_tri(i, k)) + N);
+
+			// Set the medial index (original index before inflation)
+			m_mindex[m_tri(i, k)] = tdup[i].vertices[k];
+		}
+	}
+	// Offset the vertices
+	for (unsigned int j = 0; j < vcurr; j++)
+		m_pt.set_row(j, m_pt.get_row(j) + rad * m_pt_offset.get_row(j) / valence[j]);
+	
+	vtkSmartPointer<vtkPolyData> vmb = vtkPolyData::New();
+
+	vtkSmartPointer<vtkCellArray> cells = vtkCellArray::New();
+	for (unsigned int i = 0; i < m_tri.rows(); i++)
+	{
+		cells->InsertNextCell(3);
+		for (unsigned int a = 0; a < 3; a++)
+			cells->InsertCellPoint(m_tri(i, a));
+	}
+	vmb->SetPolys(cells);
+	assert(m_pt.columns() == 3);
+	vtkSmartPointer<vtkPoints> pts = vtkPoints::New();
+	pts->SetNumberOfPoints(m_pt.rows());
+	for (int i = 0; i < m_pt.rows(); i++)
+		pts->SetPoint(i, m_pt(i, 0), m_pt(i, 1), m_pt(i, 2));
+	
+	vmb->SetPoints(pts);
+
+#ifdef _WIN64 
+	assert(Global::vectorTagPoints.size() == m_mindex.size());
+#elif _WIN32
+	assert(Global::vectorTagPoints.size() == m_mindex.size());
+#endif
+	vtkSmartPointer<vtkIntArray> arr = vtkIntArray::New();
+	arr->SetNumberOfComponents(1);
+	arr->SetNumberOfTuples(m_mindex.size());
+	arr->SetName("MedialIndex");
+	// Update the points
+	for (int i = 0; i < m_mindex.size(); i++)
+		arr->SetTuple1(i, m_mindex[i]);
+	vmb->GetPointData()->AddArray(arr);
+	vtkSmartPointer<vtkPolyDataWriter> w = vtkPolyDataWriter::New();
+	w->SetInputData(vmb);
+	w->SetFileName(fn_output.toStdString().append("_inflate.vtk").c_str());
+	w->Update();
+}
+
 //Triangle label initialization
-void EventQtSlotConnect::iniTriLabel()
+/*void EventQtSlotConnect::iniTriLabel()
 {
 	for(int i = 0; i < 10; i++)
 	{
@@ -1890,4 +2518,4 @@ void EventQtSlotConnect::iniTriLabel()
 		pix.fill(qc);
 		this->TriLabelComboBox->addItem(pix, displayText);
 	}
-}
+}*/

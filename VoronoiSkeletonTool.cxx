@@ -566,9 +566,6 @@ int VoronoiSkeletonTool::execute(int argc, std::vector <char*> argv)
 			  ipFt1[i] = (float)ipDb1[i];
 			  ipFt2[i] = (float)ipDb2[i];
 		  }
-
-		  /*vnl_vector_fixed<vtkFloatingPointType,3> p1((float*)bnd->GetPoint(ip1));
-		  vnl_vector_fixed<vtkFloatingPointType, 3> p2((float*)bnd->GetPoint(ip2));*/
 		  vnl_vector_fixed<float, 3>p1(ipFt1);
 		  vnl_vector_fixed<float, 3>p2(ipFt2);
 		  r = (p1 - p2).magnitude();

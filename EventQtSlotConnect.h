@@ -7,8 +7,10 @@
 #include "AddTagDialog.h"
 #include "AddLabelDialog.h"
 #include "MouseInteractor.h"
+#include "PreviewWindow.h"
 #include "ToggleTriLabel.h"
 #include "importNiftiiWindow.h"
+#include "SparseMatrix.h"
 
 #include "itkDiscreteGaussianImageFilter.h"
 #include "itkSmoothingRecursiveGaussianImageFilter.h"
@@ -28,6 +30,7 @@
 #include "vtkTransformPolyDataFilter.h"
 #include "itk_to_nifti_xform.h"
 #include <vtkPolyDataWriter.h>
+#include "vnl/vnl_cross.h"
 
 #include <QMainWindow>
 #include <vtkSmartPointer.h>
@@ -70,10 +73,12 @@ public:
 	void readCustomDataEdge(vtkFloatArray* edgeDBL);
 	void readCustomDataPoints(vtkFloatArray* ptsDBL);
 	void readCustomDataTag(vtkFloatArray* tagDBL, vtkStringArray* tagStr);
+	void readCustomDataTriLabel(vtkFloatArray * labelDBL, vtkStringArray * labelStr);
 	void readCustomDataLabel(vtkFloatArray* labelDBL);
 
 	void saveVTKFile(QString fileName);
 	void saveParaViewFile(QString fileName);
+	void exportSubdivideMesh(QString fileName);
 	void saveCmrepFile(QString fileName);
 
 	//void Decimate();
@@ -81,6 +86,9 @@ public:
     QColor colorBckgnd;
 
 public slots:
+
+	void autoSave();
+
 	void slot_finished();
 	void slot_skelStateChange(int);
 	void slot_meshStateChange(int);
@@ -105,6 +113,9 @@ public slots:
 	void slot_open();
 	void slot_save();
 	void slot_import();
+	void slot_preview();
+	void slot_inflate(int state);
+	void slot_subdivisionPreview(int);
 
 //	void slot_targetReductSilder(int);
 //	void slot_targetReductEditor(QString);
@@ -142,8 +153,10 @@ private:
 
 	void loadSettings();
 	void saveSettings();
+	//void InflateMedialModelWithBranches(const char * fn_input, const char * fn_output, double rad, int edge_label);
+	void InflateMedialModelWithBranches(QString fn_output, double rad);
 	void setToolButton(int flag);
-	void iniTriLabel();
+	//void iniTriLabel();
 
 	QString settingsFile;
 
@@ -152,9 +165,14 @@ private:
 	VoronoiSkeletonTool v;
 
 	QMenu *fileMenu;
+	QMenu *fileEdit;
 	QAction *openAct;
 	QAction *saveAct;
 	QAction *importAct;
+	QAction *undoAct;
+	QAction *redoAct;
+
+	QTimer *timer;
 
 	std::string VTKfilename;  
 	vtkPolyData* polyObject;

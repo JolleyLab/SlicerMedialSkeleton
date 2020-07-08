@@ -12,6 +12,7 @@ SET(CXXS
     global.cxx
     importNiftiiWindow.cxx
     MouseInteractor.cxx
+    PreviewWindow.cxx
     ShortestPath.cxx
     SparseMatrix.cxx
     ToggleTriLabel.cxx
@@ -26,9 +27,10 @@ SET(MOC_HDRS
     EventQtSlotConnect.h
     global.h
     importNiftiiWindow.h
-	itk_to_nifti_xform.h
+    itk_to_nifti_xform.h
     itkOrientedRASImage.h
     MouseInteractor.h
+    PreviewWindow.h
     ShortestPath.h
     SparseMatrix.h
     ToggleTriLabel.h
@@ -39,6 +41,7 @@ SET(MOC_HDRS
 
 SET(UIS
     EventQtSlotConnect.ui
+    PreviewWindow.ui
 )
 
 SET( BUNDLE_NAME EventQtSlotConnect )
@@ -97,7 +100,7 @@ else (NOT USE_QT4)
 endif (NOT USE_QT4)
 
 #--------------------------------------------------------------------------------
-# Now the installation stuff below
+# Now the installation
 #--------------------------------------------------------------------------------
 SET(plugin_dest_dir bin)
 SET(qtconf_dest_dir bin)

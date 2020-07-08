@@ -11,7 +11,7 @@
 AddTagDialog::AddTagDialog(QWidget *parent)
 	: QDialog(parent)
 {
-	label = new QLabel(tr("Tag:"));
+	label = new QLabel(tr("Label name:"));
 	lineEdit = new QLineEdit;
 	label->setBuddy(lineEdit);
 
@@ -20,12 +20,12 @@ AddTagDialog::AddTagDialog(QWidget *parent)
 
 	colorLabel = new QLabel;
 	//colorLabel->setFrameStyle(frameStyle);
-	QPushButton *colorButton = new QPushButton(tr("Tag &Color"));
+	QPushButton *colorButton = new QPushButton(tr("Label &Color"));
 
 	freeEdgeButton = new QRadioButton(tr("&Free Edge Point"));
 	branchButton = new QRadioButton(tr("&Branch Point"));
 	interiorButton = new QRadioButton(tr("&Interior Point"));
-	otherButton = new QRadioButton(tr("&Others"));
+	otherButton = new QRadioButton(tr("&Other"));
 
 	comboLabel = new QLabel(tr("Choose index:"));
 	indexBox = new QComboBox;
@@ -60,7 +60,7 @@ AddTagDialog::AddTagDialog(QWidget *parent)
 	mainLayout->addLayout(leftLayout, 0, 0);
     mainLayout->setRowStretch(2, 1);
 	setLayout(mainLayout);
-	setWindowTitle(tr("Tag"));	
+	setWindowTitle(tr("Point label"));	
 
 	tagIndex = 1;
 

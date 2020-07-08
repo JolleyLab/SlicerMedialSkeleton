@@ -250,5 +250,9 @@ private:
 
 	//Record of triangle violation
 	std::string recordTriViolation; 
+	
+	public slots:
+		void slot_undo();
+		void slot_redo();
 };
 #endif

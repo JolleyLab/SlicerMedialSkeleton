@@ -38,21 +38,15 @@ public:
     QLineEdit *u11;
     QLabel *u21Label;
     QLineEdit *u21;
-    QLabel *v11Label;
-    QLineEdit *v11;
-    QLabel *v21Label;
-    QLineEdit *v21;
 
     QLabel *threshLabel2;
     QLabel *u12Label;
     QLineEdit *u12;
     QLabel *u22Label;
     QLineEdit *u22;
-    QLabel *v12Label;
-    QLineEdit *v12;
-    QLabel *v22Label;
-    QLineEdit *v22;
 
+	QPushButton *showAdvancedParams;
+	QPushButton *hideAdvancedParams;
     QPushButton *done;
 
     private slots:
@@ -60,6 +54,8 @@ public:
 		void checked();
         void browseInput();
         void browseOutput();
+		void hideParams();
+		void showParams();
 };
 //! [0]
 #endif // IMPORTNIFTIIWINDOW_H

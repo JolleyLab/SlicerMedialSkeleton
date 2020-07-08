@@ -11,7 +11,7 @@
 importNiftiiWindow::importNiftiiWindow(QWidget *parent)
     :QDialog(parent)
 {
-    inputLabel = new QLabel(tr("Input niftii file: "));
+    inputLabel = new QLabel(tr("Input NifTI file: "));
     inputEdit = new QLineEdit;
     inputLabel->setBuddy(inputEdit);
     inputBrowse = new QPushButton(tr("Browse.."));
@@ -26,59 +26,46 @@ importNiftiiWindow::importNiftiiWindow(QWidget *parent)
     sigmaEdit = new QLineEdit(tr("2"));
     sigmaLabel->setBuddy(sigmaEdit);
 
-    threshLabel1 = new QLabel(tr("Pre-thresholding parameters: "));
+    threshLabel1 = new QLabel(tr("Multi-label segmentation's threshold parameters: "));
     u11Label = new QLabel(tr("Lower Threshold: "));
     u11 = new QLineEdit(tr("1"));
     u11Label->setBuddy(u11);
     u21Label = new QLabel(tr("Upper Threshold: "));
     u21 = new QLineEdit(tr("Inf"));
     u21Label->setBuddy(u21);
-    v11Label = new QLabel(tr("Inside Value: "));
-    v11 = new QLineEdit(tr("1"));
-    v11Label->setBuddy(v11);
-    v21Label = new QLabel(tr("Outside Value: "));
-    v21 = new QLineEdit(tr("0"));
-    v21Label->setBuddy(v21);
 
-    threshLabel2 = new QLabel(tr("Post-thresholding parameters: "));
+    threshLabel2 = new QLabel(tr("Level set value thresholding parameters: "));
     u12Label = new QLabel(tr("Lower Threshold: "));
-    u12 = new QLineEdit(tr("0.3"));
+    u12 = new QLineEdit(tr("0.5"));
     u12Label->setBuddy(u12);
     u22Label = new QLabel(tr("Upper Threshold: "));
     u22 = new QLineEdit(tr("Inf"));
     u22Label->setBuddy(u22);
-    v12Label = new QLabel(tr("Inside Value: "));
-    v12 = new QLineEdit(tr("1"));
-    v12Label->setBuddy(v12);
-    v22Label = new QLabel(tr("Outside Value: "));
-    v22 = new QLineEdit(tr("0"));
-    v22Label->setBuddy(v22);
+
+	showAdvancedParams = new QPushButton(tr("Show advanced parameters"));
+	hideAdvancedParams = new QPushButton(tr("Hide advanced parameters"));
 
     done = new QPushButton(tr("Done"));
     done->setDefault(true);
-
+	
 	sigmaLabel->setDisabled(true);
 	sigmaEdit->setDisabled(true);
 
-	threshLabel1->setDisabled(true);
-	u11Label->setDisabled(true);
-	u11->setDisabled(true);
-	u21Label->setDisabled(true);
-	u21->setDisabled(true);
-	v11Label->setDisabled(true);
-	v11->setDisabled(true);
-	v21Label->setDisabled(true);
-	v21->setDisabled(true);
+	showAdvancedParams->setDisabled(true);
 
-	threshLabel2->setDisabled(true);
-	u12Label->setDisabled(true);
-	u12->setDisabled(true);
-	u22Label->setDisabled(true);
-	u22->setDisabled(true);
-	v12Label->setDisabled(true);
-	v12->setDisabled(true);
-	v22Label->setDisabled(true);
-	v22->setDisabled(true);
+	threshLabel1->hide();
+	u11Label->hide();
+	u11->hide();
+	u21Label->hide();
+	u21->hide();
+
+	threshLabel2->hide();
+	u12Label->hide();
+	u12->hide();
+	u22Label->hide();
+	u22->hide();
+
+	hideAdvancedParams->hide();
 
 	QGridLayout *main = new QGridLayout;
 	main->addWidget(inputLabel, 0, 0);
@@ -93,35 +80,32 @@ importNiftiiWindow::importNiftiiWindow(QWidget *parent)
 	main->addWidget(sigmaLabel, 2, 1);
 	main->addWidget(sigmaEdit, 2, 2);
 
-	main->addWidget(threshLabel1, 3, 0);
-	main->addWidget(u11Label, 3, 1);
-	main->addWidget(u11, 3, 2);
-	main->addWidget(u21Label, 4, 1);
-	main->addWidget(u21, 4, 2);
-	main->addWidget(v11Label, 5, 1);
-	main->addWidget(v11, 5, 2);
-	main->addWidget(v21Label, 6, 1);
-	main->addWidget(v21, 6, 2);
+	main->addWidget(showAdvancedParams, 3, 1);
 
-	main->addWidget(threshLabel2, 7, 0);
-	main->addWidget(u12Label, 7, 1);
-	main->addWidget(u12, 7, 2);
-	main->addWidget(u22Label, 8, 1);
-	main->addWidget(u22, 8, 2);
-	main->addWidget(v12Label, 9, 1);
-	main->addWidget(v12, 9, 2);
-	main->addWidget(v22Label, 10, 1);
-	main->addWidget(v22, 10, 2);
+	main->addWidget(threshLabel1, 4, 0);
+	main->addWidget(u11Label, 4, 1);
+	main->addWidget(u11, 4, 2);
+	main->addWidget(u21Label, 5, 1);
+	main->addWidget(u21, 5, 2);
 
-	main->addWidget(done, 11, 2);
+	main->addWidget(threshLabel2, 6, 0);
+	main->addWidget(u12Label, 6, 1);
+	main->addWidget(u12, 6, 2);
+	main->addWidget(u22Label, 7, 1);
+	main->addWidget(u22, 7, 2);
+	
+	main->addWidget(hideAdvancedParams, 8, 1);
+	main->addWidget(done, 9, 2);
 
 	setLayout(main);
-	setWindowTitle(tr("Import niftii file")); 
+	setWindowTitle(tr("Import NifTI file")); 
 
 	connect(done, SIGNAL(clicked()), this, SLOT(accept()));
 	connect(smoothCheck, SIGNAL(stateChanged(int)), this, SLOT(checked()));
 	connect(inputBrowse, SIGNAL(clicked()), this, SLOT(browseInput()));
 	connect(outputBrowse, SIGNAL(clicked()), this, SLOT(browseOutput()));
+	connect(showAdvancedParams, SIGNAL(clicked()), this, SLOT(showParams()));
+	connect(hideAdvancedParams, SIGNAL(clicked()), this, SLOT(hideParams()));
 }
 
 void importNiftiiWindow::accept() {
@@ -143,50 +127,16 @@ void importNiftiiWindow::checked() {
 		sigmaLabel->setDisabled(false);
 		sigmaEdit->setDisabled(false);
 
-		threshLabel1->setDisabled(false);
-		u11Label->setDisabled(false);
-		u11->setDisabled(false);
-		u21Label->setDisabled(false);
-		u21->setDisabled(false);
-		v11Label->setDisabled(false);
-		v11->setDisabled(false);
-		v21Label->setDisabled(false);
-		v21->setDisabled(false);
-
-		threshLabel2->setDisabled(false);
-		u12Label->setDisabled(false);
-		u12->setDisabled(false);
-		u22Label->setDisabled(false);
-		u22->setDisabled(false);
-		v12Label->setDisabled(false);
-		v12->setDisabled(false);
-		v22Label->setDisabled(false);
-		v22->setDisabled(false);
+		showAdvancedParams->setDisabled(false);
 	}
 	else
 	{
 		sigmaLabel->setDisabled(true);
 		sigmaEdit->setDisabled(true);
 
-		threshLabel1->setDisabled(true);
-		u11Label->setDisabled(true);
-		u11->setDisabled(true);
-		u21Label->setDisabled(true);
-		u21->setDisabled(true);
-		v11Label->setDisabled(true);
-		v11->setDisabled(true);
-		v21Label->setDisabled(true);
-		v21->setDisabled(true);
-
-		threshLabel2->setDisabled(true);
-		u12Label->setDisabled(true);
-		u12->setDisabled(true);
-		u22Label->setDisabled(true);
-		u22->setDisabled(true);
-		v12Label->setDisabled(true);
-		v12->setDisabled(true);
-		v22Label->setDisabled(true);
-		v22->setDisabled(true);
+		showAdvancedParams->setDisabled(true);
+		if (showAdvancedParams->isHidden())
+			hideParams();
 	}
 
 }
@@ -207,4 +157,38 @@ void importNiftiiWindow::browseOutput()
 	if (!output.isEmpty()) {
 		outputEdit->setText(output);
 	}
+}
+
+void importNiftiiWindow::showParams() {
+	threshLabel1->show();
+	u11Label->show();
+	u11->show();
+	u21Label->show();
+	u21->show();
+
+	threshLabel2->show();
+	u12Label->show();
+	u12->show();
+	u22Label->show();
+	u22->show();
+
+	hideAdvancedParams->show();
+	showAdvancedParams->hide();
+}
+
+void importNiftiiWindow::hideParams() {
+	threshLabel1->hide();
+	u11Label->hide();
+	u11->hide();
+	u21Label->hide();
+	u21->hide();
+
+	threshLabel2->hide();
+	u12Label->hide();
+	u12->hide();
+	u22Label->hide();
+	u22->hide();
+
+	hideAdvancedParams->hide();
+	showAdvancedParams->show();
 }

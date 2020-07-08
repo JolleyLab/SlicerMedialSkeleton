@@ -521,13 +521,8 @@ void MouseInteractor::OnKeyPress()
 	if (key.compare("Shift_L") == 0 || key.compare("Shift_R") == 0)
 		isShiftPress = true;
 
-    //std::cout<< ((key.compare("z") == 0) && isCtrlPress && isShiftPress ) <<std::endl;
-//    std::cout<<isSkeleton<<std::endl;
-//    std::cout<<(key.compare("Control_L")!=0)<<std::endl;
-//    std::cout<<(key.compare("c")!=0)<<std::endl;
 	if(isSkeleton && isKeyNeeded(key)  && key.compare("Control_L") != 0 && key.compare("c") != 0) 
 	{
-//        std::cout<<"True"<<std::endl;
 		if(preKey.compare(key) != 0)
 			preOperationFlag = operationFlag;
 		preKey = key;
@@ -586,16 +581,16 @@ void MouseInteractor::OnKeyPress()
 				emit meshStateChanged(HIDE);
 			}
 		}
-		else if((key.compare("z") == 0) && isCtrlPress && !isShiftPress)
-		{
-			//std::cout << "Undo" << std::endl;
-			UndoAction();
-		}
-		else if ((key.compare("z") == 0) && isCtrlPress && isShiftPress)
-		{
-			//std::cout << "Redo" << std::endl;
-			RedoAction();
-		}
+		//else if((key.compare("z") == 0) && isCtrlPress && !isShiftPress)
+		//{
+		//	//std::cout << "Undo" << std::endl;
+		//	UndoAction();
+		//}
+		//else if ((key.compare("z") == 0) && isCtrlPress && isShiftPress)
+		//{
+		//	//std::cout << "Redo" << std::endl;
+		//	RedoAction();
+		//}
 		
 	}
 	vtkInteractorStyleTrackballCamera::OnKeyPress();
@@ -866,7 +861,6 @@ int MouseInteractor::DrawTriangle()
 		vtkSmartPointer<vtkProperty>::New();
 	backPro->SetColor(backCol);
 	actor->SetBackfaceProperty(backPro);
-	
 	for(int i = 0; i < vectorTagTriangles.size(); i++)
 	{
 		if(vectorTagTriangles[i].centerPos[0] == actor->GetCenter()[0] &&
@@ -1657,25 +1651,7 @@ void MouseInteractor::updateLabelTriNum()
 {
 	labelTriNumber->setText(QString::number(vectorTagTriangles.size()));
 }
-/*
-void MouseInteractor::updateUndo()
-{
-	int size = vectorActions.size();
-	if (size < 1)
-		undoButton->setEnabled(false);
-	else
-		undoButton->setEnabled(true);
-}
 
-void MouseInteractor::updateRedo()
-{
-	int size = vectorRedoActions.size();
-	if (size < 1)
-		redoButton->setEnabled(false);
-	else
-		redoButton->setEnabled(true);
-}
-*/
 //The old function, have been discarded
 void MouseInteractor::DrawDelaunayTriangle(){
 	if(vectorTagPoints.size() > 3){
@@ -2241,6 +2217,13 @@ void MouseInteractor::RedoAction()
 	}
 }
 
+void MouseInteractor::slot_undo() {
+	UndoAction();
+}
+
+void MouseInteractor::slot_redo() {
+	RedoAction();
+}
 bool MouseInteractor::isValidEdge(int id1, int id2)
 {
 	int edgeid = PairNumber(id1, id2);//id

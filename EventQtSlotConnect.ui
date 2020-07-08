@@ -95,7 +95,7 @@
        <bool>false</bool>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab">
        <property name="enabled">
@@ -930,12 +930,9 @@ Parameter n_bins is the number of bins in each dimension. A good value for n_bin
       </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
-        <string>Export</string>
+        <string>Save and Preview</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_10">
-        <property name="bottomMargin">
-         <number>9</number>
-        </property>
+       <layout class="QGridLayout" name="gridLayout_18">
         <item row="0" column="0">
          <widget class="QGroupBox" name="SaveOptiongroupBox">
           <property name="title">
@@ -943,32 +940,212 @@ Parameter n_bins is the number of bins in each dimension. A good value for n_bin
           </property>
           <layout class="QGridLayout" name="gridLayout_11">
            <item row="0" column="0">
-            <widget class="QLabel" name="label_14">
-             <property name="text">
-              <string>Grid Type</string>
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
+             <item>
+              <widget class="QLabel" name="label_14">
+               <property name="text">
+                <string>Grid Type</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="GridTypeComboBox"/>
+             </item>
+            </layout>
+           </item>
+           <item row="1" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_6">
+             <item>
+              <widget class="QLabel" name="label_15">
+               <property name="text">
+                <string>Subdivision Level</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="SubLevelComboBox">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <item>
+                <property name="text">
+                 <string>0</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>1</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>2</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>3</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="2" column="0">
+            <widget class="Line" name="line_3">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
-            <widget class="QComboBox" name="GridTypeComboBox"/>
+           <item row="3" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_5">
+             <item>
+              <widget class="QLabel" name="label_16">
+               <property name="text">
+                <string>Solver Type</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="SolverTypeComboBox"/>
+             </item>
+            </layout>
            </item>
+           <item row="4" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <widget class="QLabel" name="label_17">
+               <property name="text">
+                <string>Constant Rho</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="RhoLineEdit">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>-0.001</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="5" column="0">
+            <widget class="Line" name="line_4">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QCheckBox" name="ConsRadiusCheckBox">
+               <property name="text">
+                <string>Constant Radius</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="RadiusLineEdit">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>0.5</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="7" column="0">
+            <widget class="Line" name="line">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <widget class="QCheckBox" name="InflateCheckBox">
+               <property name="text">
+                <string>Inflate model</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="label_5">
+                 <property name="text">
+                  <string>Radius</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QDoubleSpinBox" name="radiusSpinBox">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="minimum">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>0.100000000000000</double>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>Radius function preview</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_10">
            <item row="1" column="0">
-            <widget class="QLabel" name="label_15">
+            <widget class="QPushButton" name="previewPushButton">
+             <property name="text">
+              <string>Preview</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QCheckBox" name="previewSubdivideCheckBox">
              <property name="text">
               <string>Subdivision Level</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QComboBox" name="SubLevelComboBox">
+           <item row="0" column="1">
+            <widget class="QComboBox" name="previewSubdivideComboBox">
              <property name="enabled">
               <bool>false</bool>
              </property>
-             <item>
-              <property name="text">
-               <string>0</string>
-              </property>
-             </item>
              <item>
               <property name="text">
                <string>1</string>
@@ -984,64 +1161,6 @@ Parameter n_bins is the number of bins in each dimension. A good value for n_bin
                <string>3</string>
               </property>
              </item>
-            </widget>
-           </item>
-           <item row="2" column="0" colspan="2">
-            <widget class="Line" name="line_3">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="label_16">
-             <property name="text">
-              <string>Solver Type</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="1">
-            <widget class="QComboBox" name="SolverTypeComboBox"/>
-           </item>
-           <item row="4" column="0">
-            <widget class="QLabel" name="label_17">
-             <property name="text">
-              <string>Constant Rho</string>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="1">
-            <widget class="QLineEdit" name="RhoLineEdit">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>-0.001</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="0" colspan="2">
-            <widget class="Line" name="line_4">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="0">
-            <widget class="QCheckBox" name="ConsRadiusCheckBox">
-             <property name="text">
-              <string>Constant Radius</string>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="1">
-            <widget class="QLineEdit" name="RadiusLineEdit">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>0.5</string>
-             </property>
             </widget>
            </item>
           </layout>

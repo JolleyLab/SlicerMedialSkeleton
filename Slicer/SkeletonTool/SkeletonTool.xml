@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>Image Computing</category>
+  <title>SkeletonTool</title>
+  <description><![CDATA[This is a CLI module that can be bundled in an extension]]></description>
+  <version>0.0.1</version>
+  <documentation-url>https://github.com/username/project</documentation-url>
+  <license>Slicer</license>
+  <contributor>Nicolas Vergnat (PICSL), Christian Herz (CHOP), Andras Lasso (PerkLab, Queen's), Matthew Jolley (CHOP/UPenn), Paul Yushkevich (PICSL), Alison Pouch (PICSL)</contributor>
+  <acknowledgements>This work was partially funded by NIH grant NXNNXXNNNNNN-NNXN</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <integer>
+      <name>nDegrees</name>
+      <longflag>nDegrees</longflag>
+      <flag>e</flag>
+      <label>Edge Criterion</label>
+      <description>Minimal number of mesh edges separating two generator points of a VD face for it to be considered (try 2, 3)</description>
+      <default>3</default>
+    </integer>
+    <double>
+      <name>xPrune</name>
+      <longflag>xPrune</longflag>
+      <flag>p</flag>
+      <label>Pruning Factor</label>
+      <description>Prune the mesh using factor X.XX (try 2.0). The pruning algorithm deletes faces in the VD for which the ratio of the
+        geodesic distance between the generating points and the euclidean distance between these points is less than X.XX</description>
+      <default>1.2</default>
+    </double>
+    <integer>
+      <name>nComp</name>
+      <longflag>nComp</longflag>
+      <flag>c</flag>
+      <label>Max Conn.Component</label>
+      <description>Take at most N connected components of the skeleton</description>
+      <default>0</default>
+    </integer>
+    <double>
+      <name>xSearchTol</name>
+      <longflag>xSearchTol</longflag>
+      <flag>t</flag>
+      <label>Tolerance</label>
+      <description>Tolerance for the inside/outside search algorithm (default 1e-6). Use lower values if holes appear in the skeleton. Set to
+        zero to disable pruning of outside vertices</description>
+      <default>1e-6</default>
+    </double>
+    <integer>
+      <name>nBins</name>
+      <longflag>nBins</longflag>
+      <flag>b</flag>
+      <label>Quadric Clustering Bins</label>
+      <description>Postprocess skeleton with VTK's quadric clustering filter. The effect is to reduce the number of vertices in the skeleton.
+        Parameter n_bins is the number of bins in each dimension. A good value for n_bins is 20-50</description>
+      <default>0</default>
+    </integer>
+    <geometry type="model">
+      <name>inputSurface</name>
+      <label>Input Model</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Input model]]></description>
+    </geometry>
+    <geometry type="model" reference="inputSurface">>
+      <name>outputSurface</name>
+      <label>Output Model</label>
+      <channel>output</channel>
+      <index>1</index>
+      <description><![CDATA[Input model]]></description>
+    </geometry>
+  </parameters>
+</executable>

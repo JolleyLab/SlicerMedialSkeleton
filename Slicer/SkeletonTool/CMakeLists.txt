@@ -43,22 +43,15 @@ ExternalProject_add(qhull
       -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
     )
 
-### qhullstatic reentrant library
-add_library(libqhullstatic_r STATIC IMPORTED)
-set_property(TARGET libqhullstatic_r PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/qhull-build/${CMAKE_STATIC_LIBRARY_PREFIX}qhullstatic_r${CMAKE_STATIC_LIBRARY_SUFFIX})
-add_dependencies(libqhullstatic_r qhull)
-### qhullcpp library
-add_library(libqhullcpp STATIC IMPORTED)
-set_property(TARGET libqhullcpp PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/qhull-build/${CMAKE_STATIC_LIBRARY_PREFIX}qhullcpp${CMAKE_STATIC_LIBRARY_SUFFIX})
-set_property(TARGET libqhullcpp PROPERTY INTERFACE_LINK_LIBRARIES libqhullstatic_r)
-add_dependencies(libqhullcpp qhull)
+set(Qhull_DIR ${CMAKE_BINARY_DIR}/qhull-build/QhullExport)
+find_package(Qhull REQUIRED)
 
 include_directories(${CMAKE_BINARY_DIR}/qhull-install/include/)
-
 
 #-----------------------------------------------------------------------------
 set(MODULE_SRCS
   SkeletonTool.cxx
+  ${CMREP_DIR}/src/dijkstra/VTKMeshShortestDistance.cxx
   )
 
 set(MODULE_TARGET_LIBRARIES
@@ -70,7 +63,14 @@ set(MODULE_TARGET_LIBRARIES
 SEMMacroBuildCLI(
   NAME ${MODULE_NAME}
   ADDITIONAL_SRCS ${MODULE_SRCS}
-  TARGET_LIBRARIES ModuleDescriptionParser ${ITK_LIBRARIES} vtkTeem MRMLCore ${VTK_LIBRARIES} libqhullstatic_r libqhullcpp
+  TARGET_LIBRARIES
+    ModuleDescriptionParser
+    ${ITK_LIBRARIES}
+    vtkTeem
+    MRMLCore
+    ${VTK_LIBRARIES}
+    Qhull::qhullstatic_r
+    Qhull::qhullcpp
   INCLUDE_DIRECTORIES
     ${CMREP_DIR}/src/dijkstra
     ${vtkTeem_INCLUDE_DIRS}

@@ -53,6 +53,11 @@
       <description>Postprocess skeleton with VTK's quadric clustering filter. The effect is to reduce the number of vertices in the skeleton.
         Parameter n_bins is the number of bins in each dimension. A good value for n_bins is 20-50</description>
       <default>0</default>
+      <constraints>
+        <minimum>0</minimum>
+        <maximum>100</maximum>
+        <step>5</step>
+      </constraints>
     </integer>
     <geometry type="model">
       <name>inputSurface</name>

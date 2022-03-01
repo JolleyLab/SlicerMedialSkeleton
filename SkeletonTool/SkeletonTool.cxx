@@ -443,16 +443,8 @@ int main(int argc, char *argv[]) {
     c2p->SetInputData(fCluster->GetOutput());
     c2p->PassCellDataOn();
     c2p->Update();
-    skelfinal = c2p->GetPolyDataOutput();
+    skelfinal->DeepCopy(c2p->GetPolyDataOutput());
   }
-
-  // orienting normals
-  vtkNew<vtkPolyDataNormals> polyDataNormals;
-  polyDataNormals->SetInputData(skelfinal);
-  polyDataNormals->ConsistencyOn();
-  polyDataNormals->AutoOrientNormalsOn();
-  polyDataNormals->Update();
-  skelfinal = polyDataNormals->GetOutput();
 
   vtkNew<vtkMRMLModelNode> outputModelNode;
   outputModelNode->SetAndObservePolyData(skelfinal);

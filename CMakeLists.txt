@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16.3...3.19.7 FATAL_ERROR)
 
 #-----------------------------------------------------------------------------
 # Switch between building Slicer extension or standalone application
-option(SlicerCMRep_BUILD_SLICER_EXTENSION "Build Slicer extension. If turned off then a standalone application will be built." OFF)
+option(SlicerCMRep_BUILD_SLICER_EXTENSION "Build Slicer extension. If turned off then a standalone application will be built." ON)
 if (NOT SlicerCMRep_BUILD_SLICER_EXTENSION)
   message(STATUS "SlicerCMRep_BUILD_SLICER_EXTENSION is not disabled. Building standalone application.")
   project(SkelGUI)
@@ -18,8 +18,8 @@ project(SlicerCMRep)
 # Extension meta-information
 set(EXTENSION_HOMEPAGE "https://github.com/JolleyLab/cmrep_skelGUI")
 set(EXTENSION_CATEGORY "Surface Models")
-set(EXTENSION_CONTRIBUTORS "Nicolas Vergnat (PICSL), Christian Herz (CHOP), Andras Lasso (PerkLab, Queen's), Matthew Jolley (CHOP/UPenn), Paul Yushkevich (PICSL), Alison Pouch (PICSL)")
-set(EXTENSION_DESCRIPTION "Developments for cmrep")
+set(EXTENSION_CONTRIBUTORS "Paul Yushkevich (PICSL/UPenn), Alison Pouch (PICSL/UPenn), Matthew Jolley (CHOP/UPenn), Christian Herz (CHOP), Andras Lasso (PerkLab, Queen's University)")
+set(EXTENSION_DESCRIPTION "Developments for cm-rep")
 set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/SlicerCMRep.png")
 set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/SlicerCMRep/Screenshots/1.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
@@ -48,7 +48,7 @@ endif()
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(SkeletonTool)
-## NEXT_MODULE
+add_subdirectory(InflateMedialModel)
 
 #-----------------------------------------------------------------------------
 set(EXTENSION_CPACK_INSTALL_CMAKE_PROJECTS)

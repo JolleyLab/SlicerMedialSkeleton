@@ -17,7 +17,7 @@ project(SlicerCMRep)
 #-----------------------------------------------------------------------------
 # Extension meta-information
 set(EXTENSION_HOMEPAGE "https://github.com/JolleyLab/cmrep_skelGUI")
-set(EXTENSION_CATEGORY "Surface Models")
+set(EXTENSION_CATEGORY "Shape Analysis")
 set(EXTENSION_CONTRIBUTORS "Paul Yushkevich (PICSL/UPenn), Alison Pouch (PICSL/UPenn), Matthew Jolley (CHOP/UPenn), Christian Herz (CHOP), Andras Lasso (PerkLab, Queen's University)")
 set(EXTENSION_DESCRIPTION "Developments for cm-rep")
 set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/SlicerCMRep.png")
@@ -48,6 +48,7 @@ endif()
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(SkeletonTool)
+add_subdirectory(SyntheticSkeleton)
 add_subdirectory(InflateMedialModel)
 
 #-----------------------------------------------------------------------------

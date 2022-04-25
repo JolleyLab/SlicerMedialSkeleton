@@ -1,0 +1,669 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SyntheticSkeleton</class>
+ <widget class="qMRMLWidget" name="SyntheticSkeleton">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>566</width>
+    <height>937</height>
+   </rect>
+  </property>
+  <layout class="QFormLayout" name="formLayout_4">
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Voronoi Surface</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="qMRMLNodeComboBox" name="inputModelSelector">
+     <property name="toolTip">
+      <string>Pick Voronoi Surface</string>
+     </property>
+     <property name="nodeTypes">
+      <stringlist>
+       <string>vtkMRMLModelNode</string>
+      </stringlist>
+     </property>
+     <property name="showChildNodeTypes">
+      <bool>false</bool>
+     </property>
+     <property name="noneEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="addEnabled">
+      <bool>false</bool>
+     </property>
+     <property name="removeEnabled">
+      <bool>false</bool>
+     </property>
+     <property name="selectNodeUponCreation">
+      <bool>false</bool>
+     </property>
+     <property name="noneDisplay">
+      <string>Select Voronoi Surface</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Output Surface</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="qMRMLNodeComboBox" name="outputModelSelector">
+     <property name="nodeTypes">
+      <stringlist>
+       <string>vtkMRMLModelNode</string>
+      </stringlist>
+     </property>
+     <property name="noneEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="renameEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="noneDisplay">
+      <string>Select Output Surface</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="2">
+    <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Point Labels</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_3">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Point Labels:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="qMRMLNodeComboBox" name="pointLabelSelector">
+        <property name="nodeTypes">
+         <stringlist>
+          <string>vtkMRMLMarkupsFiducialNode</string>
+         </stringlist>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="renameEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="selectNodeUponCreation">
+         <bool>true</bool>
+        </property>
+        <property name="noneDisplay">
+         <string>Select Point Label</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="qSlicerMarkupsPlaceWidget" name="markupsPlaceWidget">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="unsetLastControlPointOptionVisible">
+         <bool>true</bool>
+        </property>
+        <property name="placeMultipleMarkups">
+         <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+        </property>
+        <property name="placeModePersistency">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Point Type:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="pointTypeCombobox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Point Index:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="pointIndexSpinbox">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox_4">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Visualization</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <layout class="QGridLayout" name="gridLayout_6">
+        <item row="0" column="1">
+         <widget class="ctkDoubleSlider" name="skeletonTransparencySlider">
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="pageStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_21">
+          <property name="minimumSize">
+           <size>
+            <width>67</width>
+            <height>16</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Point Size</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="meshVisibilityCheckbox">
+          <property name="text">
+           <string>Mesh Visibility</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="skeletonVisibilityCheckbox">
+          <property name="text">
+           <string>Skeleton Visibility</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="ctkDoubleSlider" name="pointScaleSlider">
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="pageStep">
+           <double>5.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>15.000000000000000</double>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="ctkDoubleSlider" name="meshTransparanceySlider">
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="pageStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="6" column="0" colspan="2">
+    <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox_3">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Mesh Information</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="0" column="0">
+         <widget class="QLabel" name="labelPoint">
+          <property name="minimumSize">
+           <size>
+            <width>111</width>
+            <height>24</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <weight>50</weight>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Total Number of Points</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="pointNumberLabel">
+          <property name="minimumSize">
+           <size>
+            <width>16</width>
+            <height>24</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <weight>50</weight>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="labelTriangle">
+          <property name="minimumSize">
+           <size>
+            <width>121</width>
+            <height>24</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <weight>50</weight>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Total Number of Triangles</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="triangleNumberLabel">
+          <property name="minimumSize">
+           <size>
+            <width>16</width>
+            <height>24</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <weight>50</weight>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="4" column="0" colspan="2">
+    <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox_2">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Triangles</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Triangle Labels:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="qMRMLNodeComboBox" name="triangleLabelSelector">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="nodeTypes">
+         <stringlist>
+          <string>vtkMRMLScriptedModuleNode</string>
+         </stringlist>
+        </property>
+        <property name="showHidden">
+         <bool>true</bool>
+        </property>
+        <property name="noneEnabled">
+         <bool>true</bool>
+        </property>
+        <property name="renameEnabled">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Triangle Color</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Triangle Index:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="triangleIndexSpinbox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="ctkColorPickerButton" name="triangleColorPickerButton">
+        <property name="color">
+         <color>
+          <red>255</red>
+          <green>0</green>
+          <blue>0</blue>
+         </color>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="QGroupBox" name="groupBox">
+        <property name="title">
+         <string>Mode</string>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <item>
+            <widget class="QPushButton" name="placeTriangleButton">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="toolTip">
+              <string>Add triangle(s) by selecting three points.</string>
+             </property>
+             <property name="text">
+              <string>Add</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="assignTriangleButton">
+             <property name="toolTip">
+              <string>Assign triangle(s) with selected label.</string>
+             </property>
+             <property name="text">
+              <string>Reassign</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="deleteTriangleButton">
+             <property name="toolTip">
+              <string>Delete triangle(s) by clicking into its center.</string>
+             </property>
+             <property name="text">
+              <string>Delete</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerMarkupsPlaceWidget</class>
+   <extends>qSlicerWidget</extends>
+   <header>qSlicerMarkupsPlaceWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>ctkCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkColorPickerButton</class>
+   <extends>QPushButton</extends>
+   <header>ctkColorPickerButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkDoubleSlider</class>
+   <extends>QWidget</extends>
+   <header>ctkDoubleSlider.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>inputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>122</x>
+     <y>132</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>248</x>
+     <y>61</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>pointLabelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>165</x>
+     <y>201</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>206</x>
+     <y>162</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pointLabelSelector</sender>
+   <signal>currentNodeChanged(vtkMRMLNode*)</signal>
+   <receiver>markupsPlaceWidget</receiver>
+   <slot>setCurrentNode(vtkMRMLNode*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>164</x>
+     <y>169</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>165</x>
+     <y>214</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>markupsPlaceWidget</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>165</x>
+     <y>201</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>165</x>
+     <y>214</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>outputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>227</x>
+     <y>319</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>179</x>
+     <y>69</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>triangleLabelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>244</x>
+     <y>468</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>192</x>
+     <y>385</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

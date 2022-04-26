@@ -20,7 +20,6 @@ set(proj ${SUPERBUILD_TOPLEVEL_PROJECT})
 # Project dependencies
 set(${proj}_DEPENDS
    qhull
-   cmrep
    )
 
 ExternalProject_Include_Dependencies(${proj}

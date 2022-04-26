@@ -1,20 +1,20 @@
 #include "InflateMedialModelCLP.h"
 
-// Logic includes
+// CMREP includes
+#include "MedialException.h"
 #include "MeshTraversal.h"
 
 // VNL includes
 #include <vnl/vnl_math.h>
+#include <vnl/vnl_sparse_matrix.h>
+#include <vnl/vnl_vector_fixed.h>
+#include <vnl/vnl_cross.h>
 
 // VTK includes
 #include <vtkCellArray.h>
 #include <vtkCellDataToPointData.h>
 #include <vtkPolyData.h>
 #include <vtkPointData.h>
-
-// CMREP includes
-#include "MedialException.h"
-#include "SparseMatrix.h"
 
 // MRML includes
 #include "vtkMRMLModelStorageNode.h"

@@ -9,13 +9,22 @@ from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 from dataclasses import astuple
 from SyntheticSkeletonLib.Utils import getSortedPointIndices
+from pathlib import Path
 
-
-PARAM_POINT_GLYPH_SIZE = "Glyph_Size_Per_Cent"
+PARAM_POINT_GLYPH_SIZE = "GlyphSizePerCent"
 PARAM_INPUT_MODEL = "InputModel"
 PARAM_OUTPUT_MODEL = "OutputModel"
 PARAM_CURRENT_POINT_LABEL_LIST = "CurrentPointLabelList"
 PARAM_CURRENT_TRIANGLE_LABEL_LIST = "CurrentTriangleLabelList"
+PARAM_GRID_TYPE = "GridType"
+PARAM_GRID_MODEL_SOLVER_TYPE = "GridModelSolverType"
+PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL = "GridModelSubdivisionLevel"
+PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RHO = "GridModelCoefficientConstantRho"
+PARAM_GRID_MODEL_COEFFICIENT_USE_CONSTANT_RADIUS = "GridModelCoefficientUseConstantRadius"
+PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RADIUS = "GridModelCoefficientConstantRadius"
+PARAM_GRID_MODEL_INFLATE = "GridModelInflate"
+PARAM_GRID_MODEL_INFLATE_RADIUS = "GridModelInflateRadius"
+PARAM_OUTPUT_DIRECTORY = "OutputDirectory"
 
 
 PARAM_DEFAULTS = {
@@ -23,7 +32,16 @@ PARAM_DEFAULTS = {
   PARAM_INPUT_MODEL: "",
   PARAM_OUTPUT_MODEL: "",
   PARAM_CURRENT_POINT_LABEL_LIST: "",
-  PARAM_CURRENT_TRIANGLE_LABEL_LIST: ""
+  PARAM_CURRENT_TRIANGLE_LABEL_LIST: "",
+  PARAM_GRID_TYPE: "LoopSubdivision",
+  PARAM_GRID_MODEL_SOLVER_TYPE: "BruteForce",
+  PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL: 0,
+  PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RHO: -0.001,
+  PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RADIUS: 0.5,
+  PARAM_GRID_MODEL_COEFFICIENT_USE_CONSTANT_RADIUS: False,
+  PARAM_GRID_MODEL_INFLATE: False,
+  PARAM_GRID_MODEL_INFLATE_RADIUS: 1.0,
+  PARAM_OUTPUT_DIRECTORY: slicer.app.temporaryPath
 }
 
 
@@ -157,6 +175,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.meshTransparanceySlider.valueChanged.connect(self.onMeshTransparencySliderMoved)
     self.ui.pointScaleSlider.valueChanged.connect(self.onPointScaleSliderMoved)
 
+    self.ui.outputPathLineEdit.currentPathChanged.connect(self.onOutputDirectoryChanged)
+
+    self.ui.saveButton.clicked.connect(self.logic.save)
+
   def cleanup(self):
     """
     Called when the application closes and the module widget is destroyed.
@@ -225,6 +247,14 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.pointLabelSelector.setCurrentNode(self.parameterNode.GetNodeReference(PARAM_CURRENT_POINT_LABEL_LIST))
     self.ui.triangleLabelSelector.setCurrentNode(self.parameterNode.GetNodeReference(PARAM_CURRENT_TRIANGLE_LABEL_LIST))
     self.ui.pointScaleSlider.value = float(self.parameterNode.GetParameter(PARAM_POINT_GLYPH_SIZE))
+    self.ui.gridTypeCombobox.currentText = self.parameterNode.GetParameter(PARAM_GRID_TYPE)
+    self.ui.solverTypeCombobox.currentText = self.parameterNode.GetParameter(PARAM_GRID_MODEL_SOLVER_TYPE)
+    self.ui.subLevelSpinbox.value = int(self.parameterNode.GetParameter(PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL))
+    self.ui.constantRadiusCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_COEFFICIENT_USE_CONSTANT_RADIUS))
+    self.ui.constantRadiusSpinbox.value = float(self.parameterNode.GetParameter(PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RADIUS))
+    self.ui.inflateModelCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE))
+    self.ui.inflateRadiusSpinbox.value = float(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS))
+    self.ui.outputPathLineEdit.currentPath = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
 
     inputModel = self.ui.inputModelSelector.currentNode()
     if inputModel is not None:
@@ -254,6 +284,14 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.parameterNode.SetNodeReferenceID(PARAM_CURRENT_POINT_LABEL_LIST, self.ui.pointLabelSelector.currentNodeID)
     self.parameterNode.SetNodeReferenceID(PARAM_CURRENT_TRIANGLE_LABEL_LIST, self.ui.triangleLabelSelector.currentNodeID)
     self.parameterNode.SetParameter(PARAM_POINT_GLYPH_SIZE, str(self.ui.pointScaleSlider.value))
+    self.parameterNode.SetParameter(PARAM_GRID_TYPE, self.ui.gridTypeCombobox.currentText)
+    self.parameterNode.SetParameter(PARAM_GRID_MODEL_SOLVER_TYPE, self.ui.solverTypeCombobox.currentText)
+    self.parameterNode.SetParameter(PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL, str(self.ui.subLevelSpinbox.value))
+    self.parameterNode.SetParameter(PARAM_GRID_MODEL_COEFFICIENT_USE_CONSTANT_RADIUS, str(self.ui.constantRadiusCheckbox.checked))
+    self.parameterNode.SetParameter(PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RADIUS, str(self.ui.constantRadiusSpinbox.value))
+    self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE, str(self.ui.inflateModelCheckbox.checked))
+    self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS, str(self.ui.inflateRadiusSpinbox.value))
+    self.parameterNode.SetParameter(PARAM_OUTPUT_DIRECTORY, self.ui.outputPathLineEdit.currentPath)
     self.parameterNode.EndModify(wasModified)
 
   @whenDoneCall(updateParameterNodeFromGUI)
@@ -420,6 +458,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     for mn in self.logic.getAllMarkupNodes():
       mn.GetDisplayNode().SetGlyphScale(value)
 
+  @whenDoneCall(updateParameterNodeFromGUI)
+  def onOutputDirectoryChanged(self, path):
+    self.ui.saveButton.setEnabled(Path(path).exists())
+
   def onPlaceTriangleButtonChecked(self, checked):
     if checked and self.ui.deleteTriangleButton.checked:
       self.ui.deleteTriangleButton.setChecked(False)
@@ -545,12 +587,11 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.assignTriangleButton.setChecked(False)
     self.ui.deleteTriangleButton.setChecked(False)
 
-
 #
 # SyntheticSkeletonLogic
 #
 
-class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
+class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
   @property
   def parameterNode(self):
@@ -577,8 +618,8 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
         self.customDataToSlicer(customInfo)
 
   def __init__(self):
-    ScriptedLoadableModuleLogic.__init__(self)
     VTKObservationMixin.__init__(self)
+    ScriptedLoadableModuleLogic.__init__(self)
 
     self.locator = None
     self.data = CustomInformation()
@@ -593,16 +634,6 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     # TODO: need to clean point array
     self.data = CustomInformation(self.inputModel.GetPolyData() if self.inputModel else None)
     self._outputMesh.data = self.data
-
-  # def autoSave(self):
-  #   if self.inputModel is None:
-  #     return
-  #
-  #   writer = CustomInformationWriter(self.data)
-  #
-  #   # TODO: use tempfile and notify user about where to find it (logging and within UI)
-  #   out = "/Users/herzc/Documents/CHOP/CMREP/Slicer_prototype_example_data/dasaAffixTempAffix copy_dasdsa.vtk"
-  #   writer.writeCustomDataToFile(out)
 
   def createParameterNode(self):
     parameterNode = ScriptedLoadableModuleLogic.createParameterNode(self)
@@ -838,7 +869,7 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     for tri in self.data.vectorTagTriangles:
       self.checkEdgeConstraints(tri.triPtIds)
 
-  def preCheckConstraints(self, points: list[tuple[str, int]]):
+  def preCheckConstraints(self, points):
     types = [TAG_TYPES[int(slicer.util.getNode(mn).GetAttribute("TypeIndex"))] for mn, pIdx in points]
 
     if len(types) == 2 and all(t == EDGE_POINT for t in types):
@@ -875,7 +906,7 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     # this could be a CLI module
     pass
 
-  def attemptToAddTriangle(self, selectedPoints: list[tuple[str, int]], triLabelId: str):
+  def attemptToAddTriangle(self, selectedPoints, triLabelId):
     for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
       if triLabel.mrmlNodeID == triLabelId:
         triPtIds = [self.pointArray[i] for i in selectedPoints]
@@ -919,7 +950,7 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     else:
       return []
 
-  def createTriangle(self, triPtIds: list[int,int,int], currentTriIndex) -> str:
+  def createTriangle(self, triPtIds, currentTriIndex) -> str:
     print(f"ID {triPtIds}")
 
     # TODO: either check with old datastructure or figure out how to use vtkCurveGenerator
@@ -1032,7 +1063,7 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
     for key in delete:
       del self.data.vectorTagEdges[key]
       
-  def checkNormal(self, triPtIds: list[int]):
+  def checkNormal(self, triPtIds):
     id1, id2, id3 = triPtIds
 
     normalGenerator = vtk.vtkPolyDataNormals()
@@ -1085,6 +1116,67 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic, VTKObservationMixin):
         triPtIds[2] = tempid
 
     return triPtIds
+
+  def save(self):
+    outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
+    logging.info(f"Saving to directory: {outputDirectory}")
+    modelName = self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL)
+    self.saveVTKFile()
+    self.saveCMRepFile(outputDirectory, modelName)
+    # self.saveParaViewFile()
+    # self.exportSubdivideMesh()
+
+    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS)) is True:
+      self.exportInflatedModel(outputDirectory)
+
+  def saveVTKFile(self):
+    if self.inputModel is None:
+      return
+
+    outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
+    writer = CustomInformationWriter(self.data)
+    out = f"{outputDirectory}/{self.inputModel.GetName()}Affix.vtk"
+    writer.writeCustomDataToFile(out)
+
+  def saveCMRepFile(self, outputDirectory, modelName):
+    outFile = Path(outputDirectory) / f"{modelName}.cmrep"
+
+    attrs = OrderedDict({
+      "Grid.Type": self.parameterNode.GetParameter(PARAM_GRID_TYPE),
+      "Grid.Model.SolverType": self.parameterNode.GetParameter(PARAM_GRID_MODEL_SOLVER_TYPE),
+      "Grid.Model.Atom.SubdivisionLevel": self.parameterNode.GetParameter(PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL),
+      "Grid.Model.Coefficient.FileName": f"{modelName}.vtk",
+      "Grid.Model.Coefficient.FileType": "VTK",
+      "Grid.Model.nLabels": len(set([t.tagIndex for t in self.data.vectorTagInfo]))
+    })
+
+    if self.parameterNode.GetParameter(PARAM_GRID_MODEL_SOLVER_TYPE) == "PDE":
+      attrs["Grid.Model.Coefficient.ConstantRho"] = \
+        self.parameterNode.GetParameter(PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RHO)
+
+    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_COEFFICIENT_USE_CONSTANT_RADIUS)) is True:
+      attrs["Grid.Model.Coefficient.ConstantRadius"] = \
+        self.parameterNode.GetParameter(PARAM_GRID_MODEL_COEFFICIENT_CONSTANT_RADIUS)
+
+    with open(outFile, "w") as f:
+      for key, value in attrs.items():
+        f.write(f"{key} = {value}\n")
+
+  def exportInflatedModel(self, outputDirectory):
+    outputModel = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLModelNode')
+    inputSurfaceId = self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL)
+    assert inputSurfaceId
+    params = {
+      'inputSurface': slicer.util.getNode(inputSurfaceId),
+      'outputSurface': outputModel,
+      'rad': float(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS))
+    }
+    slicer.cli.run(slicer.modules.inflatemedialmodel, None, params, wait_for_completion=True)
+    modelNodeID = self.parameterNode.GetNodeReference(PARAM_INPUT_MODEL)
+    model = slicer.util.getNode(modelNodeID)
+    outputFileName = f"{model.GetName()}_inflated.vtk"
+    slicer.util.saveNode(outputModel, str(Path(outputDirectory) / outputFileName))
+    slicer.mrmlScene.RemoveNode(outputModel)
 
 
 #

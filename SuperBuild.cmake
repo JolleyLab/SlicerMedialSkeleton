@@ -49,8 +49,6 @@ ExternalProject_Add(${proj}
     # Superbuild
     -D${EXTENSION_NAME}_SUPERBUILD:BOOL=OFF
     -DEXTENSION_SUPERBUILD_BINARY_DIR:PATH=${${EXTENSION_NAME}_BINARY_DIR}
-    # Indicate to build Slicer extension (not the standalone app)
-    -DSlicerCMRep_BUILD_SLICER_EXTENSION:BOOL=ON
   DEPENDS
     ${${proj}_DEPENDS}
   )

@@ -41,5 +41,3 @@ SEMMacroBuildCLI(
     ${SlicerBaseCLI_SOURCE_DIR}
     ${SlicerBaseCLI_BINARY_DIR}
 )
-
-#add_dependencies(${MODULE_NAME} cmrep)

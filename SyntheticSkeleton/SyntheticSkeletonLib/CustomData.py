@@ -3,6 +3,7 @@ import numpy as np
 import qt
 import vtk
 from collections import OrderedDict
+import logging
 
 
 @dataclass
@@ -145,7 +146,7 @@ class CustomInformation(object):
     if not labelDBL:
       return
 
-    print(f"Label size {labelDBL.GetNumberOfValues()}")
+    logging.debug(f"Label size {labelDBL.GetNumberOfValues()}")
 
     for i in range(labelDBL.GetNumberOfValues()):
       self.labelData.append(labelDBL.GetValue(i))
@@ -159,7 +160,7 @@ class CustomInformation(object):
     if not tagStr:
       return
 
-    print(f"string size {tagStr.GetNumberOfValues()}")
+    logging.debug(f"string size {tagStr.GetNumberOfValues()}")
 
     j = 0
     for i in range(0, tagDBL.GetNumberOfValues() - 1, 5):
@@ -196,7 +197,7 @@ class CustomInformation(object):
     if not tagTriStr:
       return
 
-    print(f"label triangle size {tagTriStr.GetNumberOfValues()}")
+    logging.debug(f"label triangle size {tagTriStr.GetNumberOfValues()}")
 
     j = 0
     for i in range(0, tagTriDBL.GetNumberOfValues(), 3):
@@ -277,7 +278,6 @@ class CustomInformationWriter(object):
 
   def __init__(self, data: CustomInformation):
     self.data = data
-    # TODO: start timer here to auto save
 
   def writeCustomData(self, polydata):
     finalPolyData = vtk.vtkPolyData()

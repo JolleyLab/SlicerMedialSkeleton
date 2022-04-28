@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 from functools import wraps
+import slicer
 
 
 def whenDoneCall(functionToCall):
@@ -82,3 +83,20 @@ def reload(packageName, submoduleNames):
       imp.load_module(packageName + '.' + submoduleName, f, filename, description)
     finally:
       f.close()
+
+
+def getOrCreateModelNode(name):
+  try:
+    node = slicer.util.getNode(name)
+  except slicer.util.MRMLNodeNotFoundException:
+    node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLModelNode', name)
+  return node
+
+
+def deleteNode(name):
+  try:
+    node = slicer.util.getNode(name)
+    if node:
+      slicer.mrmlScene.RemoveNode(node)
+  except slicer.util.MRMLNodeNotFoundException:
+    pass

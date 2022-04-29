@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
   assert(m_pt.columns() == 3);
   vtkNew<vtkPoints> pts;
   pts->SetNumberOfPoints(m_pt.rows());
-  for (int i = 0; i < m_pt.rows(); i++)
+  for (unsigned int i = 0; i < m_pt.rows(); i++)
     pts->SetPoint(i, m_pt(i, 0), m_pt(i, 1), m_pt(i, 2));
 
   vmb->SetPoints(pts);
@@ -327,7 +327,7 @@ int main(int argc, char *argv[]) {
   arr->SetNumberOfTuples(m_mindex.size());
   arr->SetName("MedialIndex");
   // Update the points
-  for (int i = 0; i < m_mindex.size(); i++)
+  for (unsigned int i = 0; i < m_mindex.size(); i++)
     arr->SetTuple1(i, m_mindex[i]);
   vmb->GetPointData()->AddArray(arr);
 

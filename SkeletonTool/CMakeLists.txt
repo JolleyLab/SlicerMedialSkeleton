@@ -12,10 +12,7 @@ include(${SlicerExecutionModel_USE_FILE})
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-#set(qhull_DIR ${CMAKE_BINARY_DIR}/qhull-build/QhullExport)
-#message(WARNING "qhull_DIR=${qhull_DIR}")
-find_package(qhull REQUIRED)
-#include_directories(${CMAKE_BINARY_DIR}/qhull-install/include/)
+find_package(Qhull REQUIRED)
 
 include_directories(${CMREP_SOURCE_DIR}/src/dijkstra)
 

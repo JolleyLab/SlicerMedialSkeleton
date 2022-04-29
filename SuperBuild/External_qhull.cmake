@@ -34,6 +34,7 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${SUPERBUILD_TOPLEVEL_PROJECT}_USE_SYSTEM_${p
 
   set(EP_SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj})
   set(EP_BINARY_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
+  set(EP_INSTALL_DIR ${CMAKE_BINARY_DIR}/${proj}-install)
 
   ExternalProject_Add(${proj}
     ${${proj}_EP_ARGS}
@@ -55,20 +56,13 @@ if(NOT DEFINED ${proj}_DIR AND NOT ${SUPERBUILD_TOPLEVEL_PROJECT}_USE_SYSTEM_${p
       -DCMAKE_LIBRARY_OUTPUT_DIRECTORY:PATH=${CMAKE_BINARY_DIR}/${Slicer_THIRDPARTY_LIB_DIR}
       -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY:PATH=${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
       # Install directories
-      #-Dqhull_INSTALL_RUNTIME_DIR:STRING=${Slicer_INSTALL_THIRDPARTY_LIB_DIR}
-      #-Dqhull_INSTALL_LIBRARY_DIR:STRING=${Slicer_INSTALL_THIRDPARTY_LIB_DIR}
-      -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR}/qhull-install
+      -DCMAKE_INSTALL_PREFIX:PATH=${EP_INSTALL_DIR}
       # Options
       -DBUILD_TESTING:BOOL=OFF
     #INSTALL_COMMAND ""
     DEPENDS
       ${${proj}_DEPENDS}
     )
-
-#  set(${proj}_DIR ${EP_BINARY_DIR}/QhullExport)
-set(${proj}_DIR ${CMAKE_BINARY_DIR}/qhull-install/lib/cmake/QHull)
-#c:\D\cmrep_skelGUI_R\qhull-install\lib\cmake\Qhull 
-
 # TODO: check if these are needed above
 #    CMAKE_ARGS
 #      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/qhull-install
@@ -76,9 +70,12 @@ set(${proj}_DIR ${CMAKE_BINARY_DIR}/qhull-install/lib/cmake/QHull)
 #    CMAKE_CACHE_ARGS
 #      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
 
+  # Variable prefix is "Qhull" instead of "qhull" to match
+  # config filename case.
+  set(Qhull_DIR ${EP_INSTALL_DIR}/lib/cmake/Qhull)
 
 else()
   ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDS})
 endif()
 
-mark_as_superbuild(${proj}_DIR:PATH)
+mark_as_superbuild(Qhull_DIR:PATH)

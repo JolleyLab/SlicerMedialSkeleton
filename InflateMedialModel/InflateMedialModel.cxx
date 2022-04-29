@@ -64,8 +64,6 @@ int main(int argc, char *argv[]) {
 
   // Convert it into a triangle mesh
   vtkPolyData *pd = modelNode->GetPolyData();
-  vtkDataArray *alab = pd->GetPointData()->GetArray("Label");
-  unsigned int nv = (unsigned int) pd->GetNumberOfPoints();
 
   // An edge is a pair of vertices, always stored in sorted order
   typedef std::pair<unsigned int, unsigned int> Edge;
@@ -282,7 +280,6 @@ int main(int argc, char *argv[]) {
         Vec3(pd->GetPoint(tdup[i].vertices[2])) };
 
     Vec3 N = vnl_cross_3d(P[1]-P[0], P[2]-P[0]).normalize();
-    Vec3 C = (P[0] + P[1] + P[2])/3.0;
 
     for(unsigned int k = 0; k < 3; k++)
     {

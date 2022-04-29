@@ -64,8 +64,6 @@ int main(int argc, char *argv[]) {
 
   // Convert it into a triangle mesh
   vtkPolyData *pd = modelNode->GetPolyData();
-  vtkDataArray *alab = pd->GetPointData()->GetArray("Label");
-  unsigned int nv = (unsigned int) pd->GetNumberOfPoints();
 
   // An edge is a pair of vertices, always stored in sorted order
   typedef std::pair<unsigned int, unsigned int> Edge;
@@ -282,7 +280,6 @@ int main(int argc, char *argv[]) {
         Vec3(pd->GetPoint(tdup[i].vertices[2])) };
 
     Vec3 N = vnl_cross_3d(P[1]-P[0], P[2]-P[0]).normalize();
-    Vec3 C = (P[0] + P[1] + P[2])/3.0;
 
     for(unsigned int k = 0; k < 3; k++)
     {
@@ -320,7 +317,7 @@ int main(int argc, char *argv[]) {
   assert(m_pt.columns() == 3);
   vtkNew<vtkPoints> pts;
   pts->SetNumberOfPoints(m_pt.rows());
-  for (int i = 0; i < m_pt.rows(); i++)
+  for (unsigned int i = 0; i < m_pt.rows(); i++)
     pts->SetPoint(i, m_pt(i, 0), m_pt(i, 1), m_pt(i, 2));
 
   vmb->SetPoints(pts);
@@ -330,7 +327,7 @@ int main(int argc, char *argv[]) {
   arr->SetNumberOfTuples(m_mindex.size());
   arr->SetName("MedialIndex");
   // Update the points
-  for (int i = 0; i < m_mindex.size(); i++)
+  for (unsigned int i = 0; i < m_mindex.size(); i++)
     arr->SetTuple1(i, m_mindex[i]);
   vmb->GetPointData()->AddArray(arr);
 

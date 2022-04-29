@@ -46,7 +46,12 @@ class UnitLengthMeshEdgeWeightFunction : public MeshEdgeWeightFunction
 public:
   virtual double GetEdgeWeight(
     vtkPolyData *mesh, vtkIdType x1, vtkIdType x2) const
-    { return 1.0; }
+    {
+      (void)mesh; // unused
+      (void)x1; // unused
+      (void)x2; // unused
+      return 1.0;
+    }
   virtual ~UnitLengthMeshEdgeWeightFunction() {}
 };
 

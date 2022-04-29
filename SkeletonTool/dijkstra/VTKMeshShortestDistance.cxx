@@ -78,6 +78,7 @@ bool
 VTKMeshShortestDistance
 ::PickCell(Vec xStart, Vec xEnd, vtkIdType &point) const
 {
+  (void)point;
   // Ugly VTK
   double v1[3], v2[3], ptLine[3], pCoords[3];
   int subId;

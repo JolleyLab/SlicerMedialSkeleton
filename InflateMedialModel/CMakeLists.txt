@@ -10,7 +10,6 @@ find_package(SlicerExecutionModel REQUIRED)
 include(${SlicerExecutionModel_USE_FILE})
 
 find_package(VTK REQUIRED)
-include(${VTK_USE_FILE})
 
 #-----------------------------------------------------------------------------
 set(MODULE_SRCS

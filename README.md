@@ -2,7 +2,7 @@
 
 This extension provides ways to create medial skeletons using Voronoi with additional cleaning steps and the option to
 create synthetic skeleton by manually triangulating points. For example, the resulting synthetic skeleton can be used as
-a medial template alongside additional output parameter files to create Continuous Medial Representation (CM-Rep).
+a medial template alongside additional output parameter files to create Continuous Medial Representations (CM-Rep).
 
 Further information regarding CM-Rep can be found at https://github.com/pyushkevich/cmrep
 
@@ -10,7 +10,7 @@ Further information regarding CM-Rep can be found at https://github.com/pyushkev
 
 Original cm-rep author [Paul Yushkevich](https://github.com/pyushkevich) granted permission to distribute the
 source/header files (**in the red boxes**) required to compile _InflateMedialModel_ and _SkeletonTool_ under
-the [Slicer BSD license](License.txt).
+the [Slicer BSD license](License.txt). We are thankful for his generosity.
 
 ![ModuleOverview](overview.png)
 

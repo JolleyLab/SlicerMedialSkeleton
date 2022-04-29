@@ -4,12 +4,12 @@ project(MedialSkeleton)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "https://github.com/JolleyLab/MedialSkeleton")
-set(EXTENSION_CATEGORY "Skeletonization")
+set(EXTENSION_HOMEPAGE "https://github.com/JolleyLab/SlicerMedialSkeleton")
+set(EXTENSION_CATEGORY "Shape Analysis")
 set(EXTENSION_CONTRIBUTORS "Paul Yushkevich (PICSL/UPenn), Alison Pouch (PICSL/UPenn), Matthew Jolley (CHOP/UPenn), Christian Herz (CHOP), Andras Lasso (PerkLab, Queen's University)")
 set(EXTENSION_DESCRIPTION "Modules for creating medial skeletons")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/MedialSkeleton.png")
-set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/JolleyLab/MedialSkeleton/master/SyntheticSkeleton/Resources/Screenshots/SyntheticSkeleton01.png")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/JolleyLab/SlicerMedialSkeleton/main/MedialSkeleton.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/JolleyLab/SlicerMedialSkeleton/main/SkeletonTool/Screenshots/SkeletonTool01.png https://github.com/JolleyLab/SlicerMedialSkeleton/raw/main/SyntheticSkeleton/Resources/Screenshots/SyntheticSkeleton01.png https://github.com/JolleyLab/SlicerMedialSkeleton/raw/main/InflateMedialModel/Screenshots/InflateMedialModel01.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
 set(EXTENSION_BUILD_SUBDIRECTORY inner-build)
 

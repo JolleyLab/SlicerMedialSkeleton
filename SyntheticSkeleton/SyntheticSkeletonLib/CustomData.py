@@ -37,35 +37,24 @@ class LabelTriangle:
 
 
 @dataclass
-class TagTriangle:
-  # TODO: get rid of duplication. It would be enough to have the points themselves here
-  p1: Point
-  p2: Point
-  p3: Point
-  id1: int  # index in global point array
-  id2: int
-  id3: int
-  seq1: int # vertex index in skeleton
-  seq2: int
-  seq3: int
-  index: int # the triangle label index
-
-  @property
-  def triPtIds(self):
-    return [self.id1, self.id2, self.id3]
-
-  @property
-  def centerPos(self):
-    return np.array([astuple(self.p1), astuple(self.p2), astuple(self.p3)]).mean(axis=0)
-
-
-@dataclass
 class TagPoint:
   pos: Point
   radius: float   # TODO: this could be calculated upon request
-  typeIndex: int  # tag index
-  comboBoxIndex: int  # index in combobox
+  typeIndex: int  # tag index              TODO: could be direct connectio to TagInfo
+  comboBoxIndex: int  # index in combobox  TODO: could be direct relationship to triangle label
   seq: int  # the sequence in all vertices  on skeleton
+
+
+@dataclass
+class TagTriangle:
+  p1: TagPoint
+  p2: TagPoint
+  p3: TagPoint
+  label: LabelTriangle
+
+  @property
+  def points(self):
+    return [self.p1, self.p2, self.p3]
 
 
 @dataclass
@@ -88,6 +77,9 @@ class TagEdge:
 
 
 class CustomInformation(object):
+
+  def triPtIds(self, tri):
+    return [self.vectorTagPoints.index(p) for p in [tri.p1, tri.p2, tri.p3]]
 
   def getEdgeConstraint(self, tagPoint1: TagPoint, tagPoint2: TagPoint) -> int:
     type1 = self.vectorTagInfo[tagPoint1.comboBoxIndex].tagType
@@ -219,16 +211,10 @@ class CustomInformation(object):
 
     for i in range(0, triDBL.GetNumberOfValues(), 16):
       tri = TagTriangle(
-        p1=Point(triDBL.GetValue(i), triDBL.GetValue(i + 1), triDBL.GetValue(i + 2)),
-        id1=int(triDBL.GetValue(i + 3)),
-        seq1=int(triDBL.GetValue(i + 4)),
-        p2=Point(triDBL.GetValue(i + 5), triDBL.GetValue(i + 6), triDBL.GetValue(i + 7)),
-        id2=int(triDBL.GetValue(i + 8)),
-        seq2=int(triDBL.GetValue(i + 9)),
-        p3=Point(triDBL.GetValue(i + 10), triDBL.GetValue(i + 11), triDBL.GetValue(i + 12)),
-        id3=int(triDBL.GetValue(i + 13)),
-        seq3=int(triDBL.GetValue(i + 14)),
-        index=int(triDBL.GetValue(i + 15))
+        p1=self.vectorTagPoints[int(triDBL.GetValue(i + 3))],
+        p2=self.vectorTagPoints[int(triDBL.GetValue(i + 8))],
+        p3=self.vectorTagPoints[int(triDBL.GetValue(i + 13))],
+        label=self.vectorLabelInfo[int(triDBL.GetValue(i + 15))]
       )
 
       self.vectorTagTriangles.append(tri)
@@ -308,7 +294,6 @@ class CustomInformationWriter(object):
     if fielddata.GetArray("Label"):
       fielddata.RemoveArray("Label")
 
-    import numpy as np
     labelData = np.zeros((self.data.polydata.GetNumberOfPoints(),), dtype=float)
     for pt in self.vectorTagPoints:
       labelData[pt.seq] = pt.typeIndex
@@ -389,7 +374,7 @@ class CustomInformationWriter(object):
     # create dummy array to fill in vtk fields
     from SyntheticSkeletonLib.Utils import pairNumber
     maxId = pairNumber(len(self.vectorTagPoints), len(self.vectorTagPoints))
-    import numpy as np
+
     vectorTagEdges = np.zeros((maxId+1,), dtype=TagEdge)
     for key, val in self.vectorTagEdges.items():
       vectorTagEdges[key] = val
@@ -415,21 +400,13 @@ class CustomInformationWriter(object):
     fltArray2 = vtk.vtkFloatArray()
     fltArray2.SetName("TagTriangles")
     for i in range(len(self.vectorTagTriangles)):
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p1.x)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p1.y)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p1.z)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].id1)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].seq1)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p2.x)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p2.y)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p2.z)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].id2)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].seq2)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p3.x)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p3.y)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].p3.z)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].id3)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].seq3)
-      fltArray2.InsertNextValue(self.vectorTagTriangles[i].index)
+      tri = self.vectorTagTriangles[i]
+      for pt in tri.points:
+        fltArray2.InsertNextValue(pt.pos.x)
+        fltArray2.InsertNextValue(pt.pos.y)
+        fltArray2.InsertNextValue(pt.pos.z)
+        fltArray2.InsertNextValue(self.vectorTagPoints.index(pt))
+        fltArray2.InsertNextValue(pt.seq)
+      fltArray2.InsertNextValue(self.vectorLabelInfo.index(tri.label))
     if len(self.vectorTagTriangles) != 0:
       fielddata.AddArray(fltArray2)

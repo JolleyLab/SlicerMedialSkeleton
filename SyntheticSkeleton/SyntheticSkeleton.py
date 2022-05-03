@@ -767,10 +767,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
       if triLabel.mrmlNodeID == node.GetID():
         for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-          if tri.index == lblIdx:
+          if tri.label == triLabel:
             delete.append(triIdx)
-          elif tri.index > lblIdx:
-            tri.index -= lblIdx
         del self.data.vectorLabelInfo[lblIdx]
         break
 
@@ -845,7 +843,16 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       n.SetAttribute("Type", "Triangle")
       self.onNodeAdded(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, n)
 
-    self.data.vectorTagTriangles = customInfo.vectorTagTriangles.copy()
+    self.data.vectorTagTriangles = []
+    for srcTri in customInfo.vectorTagTriangles:
+      triIds = customInfo.triPtIds(srcTri)
+      tri = TagTriangle(
+        p1=self.data.vectorTagPoints[triIds[0]],
+        p2=self.data.vectorTagPoints[triIds[1]],
+        p3=self.data.vectorTagPoints[triIds[2]],
+        label=self.data.vectorLabelInfo[customInfo.vectorLabelInfo.index(srcTri.label)]
+      )
+      self.data.vectorTagTriangles.append(tri)
 
     self.generateEdges()
 
@@ -923,17 +930,12 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
     # delete triangles
     delete = []
+    pt = self.data.vectorTagPoints[globPIdx]
     for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-      if any(pId == globPIdx for pId in tri.triPtIds):
+      if pt in tri.points:
         delete.append(triIdx)
     for index in sorted(delete, reverse=True):
       del self.data.vectorTagTriangles[index]
-
-    # update triangle ids
-    for tri in self.data.vectorTagTriangles:
-      tri.id1 = tri.id1 - 1 if tri.id1 > globPIdx else tri.id1
-      tri.id2 = tri.id2 - 1 if tri.id2 > globPIdx else tri.id2
-      tri.id3 = tri.id3 - 1 if tri.id3 > globPIdx else tri.id3
 
     del self.data.vectorTagPoints[globPIdx]
     del self.pointArray[(caller.GetID(), localPointIdx)]
@@ -958,7 +960,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
   def generateEdges(self):
     self.data.vectorTagEdges = OrderedDict()
     for tri in self.data.vectorTagTriangles:
-      self.checkEdgeConstraints(tri.triPtIds)
+      self.checkEdgeConstraints(self.data.triPtIds(tri))
 
   def preCheckConstraints(self, points):
     types = [TAG_TYPES[int(slicer.util.getNode(mn).GetAttribute("TypeIndex"))] for mn, pIdx in points]
@@ -996,7 +998,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
       if triLabel.mrmlNodeID == triLabelId:
         triPtIds = [self.pointArray[i] for i in selectedPoints]
-        tri = self.createTriangle(triPtIds, lblIdx)
+        tri = self.createTriangle(triPtIds, triLabel)
         self.onDataModified()
         nextTriPtIds = self.getNextTriPt(tri)
         print("after ", triPtIds)
@@ -1016,7 +1018,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       edge = TagEdge(
         ptId1=ptId1,
         ptId2=ptId2,
-        seq=-1,  # TODO: need to fill this in for later use
+        seq=0,
         numEdge=0,
         constrain=cons
       )
@@ -1026,7 +1028,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     return True
 
   def getNextTriPt(self, tri):
-    triPtIds = tri.triPtIds
+    triPtIds = self.data.triPtIds(tri)
     if self.isValidEdge(triPtIds[1], triPtIds[2]):
       return [triPtIds[1], triPtIds[2]]
     elif self.isValidEdge(triPtIds[0], triPtIds[1]):
@@ -1036,7 +1038,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     else:
       return []
 
-  def createTriangle(self, triPtIds, currentTriIndex):
+  def createTriangle(self, triPtIds, label):
     print(f"ID {triPtIds}")
 
     # CurvePointOrder
@@ -1051,16 +1053,10 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
     # Store the new triangle
     tri = TagTriangle(
-      p1=vectorTagPoints[triPtIds[0]].pos,
-      p2=vectorTagPoints[triPtIds[1]].pos,
-      p3=vectorTagPoints[triPtIds[2]].pos,
-      id1=triPtIds[0],
-      id2=triPtIds[1],
-      id3=triPtIds[2],
-      seq1=vectorTagPoints[triPtIds[0]].seq,
-      seq2=vectorTagPoints[triPtIds[1]].seq,
-      seq3=vectorTagPoints[triPtIds[2]].seq,
-      index=currentTriIndex
+      p1=vectorTagPoints[triPtIds[0]],
+      p2=vectorTagPoints[triPtIds[1]],
+      p3=vectorTagPoints[triPtIds[2]],
+      label=label
     )
 
     self.data.vectorTagTriangles.append(tri)
@@ -1083,10 +1079,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
     return ""
 
-  def allPointsAreEdges(self, triPtIds):
-    tagTypes = [self.data.vectorTagInfo[self.data.vectorTagPoints[ptId].comboBoxIndex].tagType for ptId in triPtIds]
-    return all(t == 2 for t in tagTypes)
-
   def getOrCreateEdge(self, ptId1, ptId2):
     edgeId = pairNumber(ptId1, ptId2)
     try:
@@ -1097,7 +1089,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       edge = TagEdge(
         ptId1=ptId1,
         ptId2=ptId2,
-        seq=-1, # TODO: need to fill this in for later use
+        seq=0,
         numEdge=0,
         constrain=cons
       )
@@ -1112,8 +1104,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
       if triLabel.mrmlNodeID == triLabelId:
         for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-          if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1), astuple(tri.p2), astuple(tri.p3), 0.1):
-            tri.index = lblIdx
+          if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
+            tri.label = triLabel
             self.onDataModified()
             break
         break
@@ -1125,7 +1117,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       return
 
     for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-      if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1), astuple(tri.p2), astuple(tri.p3), 0.1):
+      if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
         self.deleteTriangle(triIdx)
         break
     self.onDataModified()
@@ -1136,26 +1128,17 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       return
 
     for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-      if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1), astuple(tri.p2), astuple(tri.p3), 0.1):
+      if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
         # flip the 2nd and 3rd vertices
-        tempChange = tri.id2
-        tri.id2 = tri.id3
-        tri.id3 = tempChange
-
-        tempChange = tri.seq2
-        tri.seq2 = tri.seq3
-        tri.seq3 = tempChange
-
         tempPos = tri.p2
         tri.p2= tri.p3
         tri.p3 = tempPos
-
         break
     self.onDataModified()
 
   def deleteTriangle(self, triIdx):
     tri = self.data.vectorTagTriangles[triIdx]
-    triPtIds = tri.triPtIds
+    triPtIds = self.data.triPtIds(tri)
 
     edgeId1 = pairNumber(triPtIds[0], triPtIds[1])
     edgeId2 = pairNumber(triPtIds[1], triPtIds[2])
@@ -1415,19 +1398,20 @@ class Mesh:
     colorsArray.SetName("Colors")
 
     for tri in self.data.vectorTagTriangles:
+      triPtIds = self.data.triPtIds(tri)
       triangle = vtk.vtkTriangle()
-      triangle.GetPointIds().SetId(0, tri.id1)
-      triangle.GetPointIds().SetId(1, tri.id2)
-      triangle.GetPointIds().SetId(2, tri.id3)
+      triangle.GetPointIds().SetId(0, triPtIds[0])
+      triangle.GetPointIds().SetId(1, triPtIds[1])
+      triangle.GetPointIds().SetId(2, triPtIds[2])
       triangles.InsertNextCell(triangle)
 
-      color = qt.QColor(self.data.vectorLabelInfo[tri.index].labelColor)
+      color = qt.QColor(tri.label.labelColor)
       colorsArray.InsertNextTuple3(color.red(), color.green(), color.blue())
 
     fltArray8 = vtk.vtkFloatArray()
     fltArray8.SetName("TriangleLabel")
     for ti in self.data.vectorTagTriangles:
-      fltArray8.InsertNextValue(ti.index+1)
+      fltArray8.InsertNextValue(self.data.vectorLabelInfo.index(ti.label) + 1)
     self.meshPoly.GetCellData().AddArray(fltArray8)
 
     self.meshPoly.GetCellData().SetScalars(colorsArray)

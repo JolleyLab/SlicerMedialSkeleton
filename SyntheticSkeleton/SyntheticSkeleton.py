@@ -151,6 +151,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     self.ui.skeletonVisibilityCheckbox.toggled.connect(self.onSkeletonVisibilityToggled)
     self.ui.meshVisibilityCheckbox.toggled.connect(self.onMeshVisibilityToggled)
+    self.ui.autoSaveCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
 
     self.ui.skeletonTransparencySlider.valueChanged.connect(self.onSkeletonTransparencySliderMoved)
     self.ui.meshTransparanceySlider.valueChanged.connect(self.onMeshTransparencySliderMoved)
@@ -233,6 +234,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.inflateModelCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE))
     self.ui.inflateRadiusSpinbox.value = float(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS))
     self.ui.outputPathLineEdit.currentPath = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
+    self.ui.autoSaveCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE))
 
     inputModel = self.ui.inputModelSelector.currentNode()
     if inputModel is not None:
@@ -270,6 +272,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE, str(self.ui.inflateModelCheckbox.checked))
     self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS, str(self.ui.inflateRadiusSpinbox.value))
     self.parameterNode.SetParameter(PARAM_OUTPUT_DIRECTORY, self.ui.outputPathLineEdit.currentPath)
+    self.parameterNode.SetParameter(PARAM_AUTO_SAVE, str(self.ui.autoSaveCheckbox.checked))
     self.parameterNode.EndModify(wasModified)
 
   @whenDoneCall(updateParameterNodeFromGUI)
@@ -645,6 +648,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.pointArray = dict()
     self._outputMesh = Mesh(self.data) # TODO: notify if data is changed?
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
 
   def __del__(self):
     pass
@@ -690,6 +694,11 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.addObserver(markupsNode, markupsNode.PointEndInteractionEvent, self.onPointInteractionEnded)
     self.addObserver(markupsNode, markupsNode.PointAboutToBeRemovedEvent, self.onPointRemoved)
 
+  def onDataModified(self):
+    self._outputMesh.updateMesh()
+    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE)) is True:
+      self.saveAffixVTKFile(suffix="Temp")
+
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
     node = calldata
@@ -732,6 +741,22 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.data.vectorTagInfo.append(ti)
     self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onMarkupsNodeModified)
 
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onNodeRemoved(self, caller, event, calldata):
+    node = calldata
+    if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
+        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "Triangle":
+        print("triangle deleted")
+        self.onTriangleLabelAdded(node)
+    elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName:
+      self.onPointLabelRemoved(node)
+
+  def onPointLabelRemoved(self, node):
+    for idx in reversed(range(node.GetNumberOfControlPoints())):
+      self.onPointRemoved(node, "PointRemovedEvent", idx, callModified=False)
+    self.removeObserver(node, vtk.vtkCommand.ModifiedEvent, self.onMarkupsNodeModified)
+    self.onDataModified()
+
   def onTriangleModified(self, caller, event):
     for tl in self.data.vectorLabelInfo:
       if caller.GetID() == tl.mrmlNodeID:
@@ -739,7 +764,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         tl.labelColor = caller.GetAttribute("Color")
         # print(self.data.vectorLabelInfo)
         break
-    self._outputMesh.updateMesh()
+    self.onDataModified()
 
   def onMarkupsNodeModified(self, node, event):
     for ti in self.data.vectorTagInfo:
@@ -786,7 +811,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     for uniqueId, edge in self.data.vectorTagEdges.items():
       assert uniqueId == pairNumber(edge.ptId1, edge.ptId2)
 
-    self._outputMesh.updateMesh()
+    self.onDataModified()
 
   def getClosestVertexAndRadius(self, pos):
     assert self.locator is not None
@@ -796,7 +821,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     return vertexIdx, radiusArray.GetValue(vertexIdx)
 
   def onPointAdded(self, caller, event):
-    # print("Point Added")
+    print("Point Added")
     pointIdx = caller.GetNumberOfControlPoints()-1
     # print(pointIdx)
     pos = caller.GetNthControlPointPosition(pointIdx)
@@ -814,6 +839,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     # print("New:", pt)
     self.data.vectorTagPoints.append(pt)
     self.pointArray[(caller.GetID(), pointIdx)] = len(self.data.vectorTagPoints) - 1
+
+    self.onDataModified()
 
   def onPointInteractionStarted(self, caller, event):
     self.addObserver(caller, caller.PointModifiedEvent, self.onPointModified)
@@ -842,10 +869,10 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pt.radius = radius
     pt.seq = vertIdx
 
-    self._outputMesh.updateMesh()
+    self.onDataModified()
 
   @vtk.calldata_type(vtk.VTK_INT)
-  def onPointRemoved(self, caller, event, localPointIdx):
+  def onPointRemoved(self, caller, event, localPointIdx, callModified=True):
     print("onPointRemoved")
     try:
       globPIdx = self.pointArray[(caller.GetID(), localPointIdx)]
@@ -884,7 +911,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
     self.generateEdges()
 
-    self._outputMesh.updateMesh()
+    if callModified:
+      self.onDataModified()
 
   def generateEdges(self):
     self.data.vectorTagEdges = OrderedDict()
@@ -933,7 +961,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if triLabel.mrmlNodeID == triLabelId:
         triPtIds = [self.pointArray[i] for i in selectedPoints]
         tri = self.createTriangle(triPtIds, lblIdx)
-        self._outputMesh.updateMesh()
+        self.onDataModified()
         nextTriPtIds = self.getNextTriPt(tri)
         print("after ", triPtIds)
         print("Next PT ids ", nextTriPtIds)
@@ -1050,7 +1078,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         for triIdx, tri in enumerate(self.data.vectorTagTriangles):
           if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1), astuple(tri.p2), astuple(tri.p3), 0.1):
             tri.index = lblIdx
-            self._outputMesh.updateMesh()
+            self.onDataModified()
             break
         break
     return "No valid triangle label found"
@@ -1064,7 +1092,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1), astuple(tri.p2), astuple(tri.p3), 0.1):
         self.deleteTriangle(triIdx)
         break
-    self._outputMesh.updateMesh()
+    self.onDataModified()
 
   def flipTriangleNormal(self, pos):
     poly = self._outputMesh.meshPoly
@@ -1087,7 +1115,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         tri.p3 = tempPos
 
         break
-    self._outputMesh.updateMesh()
+    self.onDataModified()
 
   def deleteTriangle(self, triIdx):
     tri = self.data.vectorTagTriangles[triIdx]
@@ -1178,13 +1206,13 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       slicer.util.saveNode(inflatedModel, str(Path(outputDirectory) / f"{inflatedModel.GetName()}.vtk"))
       slicer.mrmlScene.RemoveNode(inflatedModel)
 
-  def saveAffixVTKFile(self):
+  def saveAffixVTKFile(self, suffix=""):
     if self.inputModel is None:
       return
 
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     writer = CustomInformationWriter(self.data)
-    out = f"{outputDirectory}/{self.inputModel.GetName()}Affix.vtk"
+    out = f"{outputDirectory}/{self.inputModel.GetName()}{suffix}Affix.vtk"
     writer.writeCustomDataToFile(out)
 
   def saveTriangulatedMesh(self):

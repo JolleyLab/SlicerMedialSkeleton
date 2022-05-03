@@ -38,6 +38,7 @@ class LabelTriangle:
 
 @dataclass
 class TagTriangle:
+  # TODO: get rid of duplication. It would be enough to have the points themselves here
   p1: Point
   p2: Point
   p3: Point
@@ -299,6 +300,7 @@ class CustomInformationWriter(object):
     writer = vtk.vtkGenericDataObjectWriter()
     writer.SetFileName(outputFilePath)
     writer.SetInputData(finalPolyData)
+    writer.SetFileTypeToASCII()
     writer.Update()
     writer.Write()
 

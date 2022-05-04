@@ -141,7 +141,6 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.pointIndexSpinbox.valueChanged.connect(self.onPointAnatomicalIndexChanged)
 
     self.ui.triangleLabelSelector.currentNodeChanged.connect(self.onTriangleLabelSelected)
-    self.ui.triangleIndexSpinbox.valueChanged.connect(self.onTriangleIndexChanged)
     self.ui.triangleColorPickerButton.colorChanged.connect(self.onTriangleColorChanged)
 
     self.ui.placeTriangleButton.toggled.connect(self.onPlaceTriangleButtonChecked)
@@ -388,15 +387,12 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
         self.ui.placeTriangleButton.setChecked(False)
       return
 
-    anatomicalIndex = node.GetAttribute("AnatomicalIndex")
-    if anatomicalIndex:
-      self.ui.triangleIndexSpinbox.setValue(int(anatomicalIndex))
-    else:
-      print("setting anatomical index")
-      # TODO: identify existent triangles and filter label values that are already used
-      newValue = len(list(self.logic.getAllTriangleNodes()))
-      self.ui.triangleIndexSpinbox.setValue(newValue)
-      self.onTriangleIndexChanged(newValue)
+    for lblIdx, triLabel in enumerate(self.logic.data.vectorLabelInfo):
+      if triLabel.mrmlNodeID == node.GetID():
+        wasBlocked = self.ui.triangleIndexSpinbox.blockSignals(True)
+        self.ui.triangleIndexSpinbox.value = lblIdx + 1
+        self.ui.triangleIndexSpinbox.blockSignals(wasBlocked)
+        break
 
     color = node.GetAttribute("Color")
     if color:
@@ -405,13 +401,6 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       color = qt.QColor("#ff0000")
       self.ui.triangleColorPickerButton.setColor(color)
       self.onTriangleColorChanged(color)
-
-  def onTriangleIndexChanged(self, value):
-    triangleNode = self.ui.triangleLabelSelector.currentNode()
-    if not triangleNode:
-      return
-
-    triangleNode.SetAttribute("AnatomicalIndex", str(value))
 
   def onTriangleColorChanged(self, color):
     triangleNode = self.ui.triangleLabelSelector.currentNode()

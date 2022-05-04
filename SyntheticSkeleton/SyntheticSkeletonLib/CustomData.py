@@ -45,7 +45,7 @@ class TagPoint:
 
   @property
   def typeIndex(self):
-    return self.tag.tagType
+    return self.tag.tagIndex
 
   @property
   def typeName(self):
@@ -92,7 +92,7 @@ class CustomInformation(object):
     return None
 
   def triPtIds(self, tri):
-    return [self.vectorTagPoints.index(p) for p in [tri.p1, tri.p2, tri.p3]]
+    return [self.vectorTagPoints.index(p) for p in tri.points]
 
   def getEdgeConstraint(self, tagPoint1: TagPoint, tagPoint2: TagPoint) -> int:
     type1 = tagPoint1.typeIndex
@@ -316,7 +316,6 @@ class CustomInformationWriter(object):
       fltArray1.InsertNextValue(label)
     if len(labelData) != 0:
       fielddata.AddArray(fltArray1)
-
 
   def _writeCustomDataTag(self, fielddata):
     if fielddata.GetArray("TagInfo"):

@@ -86,6 +86,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     """
     Called when the application closes and the module widget is destroyed.
     """
+    self.removeAutoSaveTimer()
     self.removeObservers()
     self.deactivateModes()
     self.logic.removeObservers()
@@ -95,6 +96,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.initializeUI()
 
     self.logic = SyntheticSkeletonLogic()
+
+    self.timer = None
 
     self._selectedPoints = [] # (markupsNode.GetID(), pointIdx)
 
@@ -153,7 +156,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     self.ui.skeletonVisibilityCheckbox.toggled.connect(self.onSkeletonVisibilityToggled)
     self.ui.meshVisibilityCheckbox.toggled.connect(self.onMeshVisibilityToggled)
-    self.ui.autoSaveCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
+    self.ui.autoSaveCheckbox.toggled.connect(self.addAutoSaveTimer)
 
     self.ui.skeletonTransparencySlider.valueChanged.connect(self.onSkeletonTransparencySliderMoved)
     self.ui.meshTransparanceySlider.valueChanged.connect(self.onMeshTransparencySliderMoved)
@@ -182,6 +185,11 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     Called each time the user opens a different module.
     """
     self.deactivateModes()
+    self.removeAutoSaveTimer()
+
+  def enter(self):
+    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE)) is True:
+      self.addAutoSaveTimer()
 
   def onSceneStartClose(self, caller, event):
     """
@@ -280,6 +288,21 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.parameterNode.SetParameter(PARAM_OUTPUT_DIRECTORY, self.ui.outputPathLineEdit.currentPath)
     self.parameterNode.SetParameter(PARAM_AUTO_SAVE, str(self.ui.autoSaveCheckbox.checked))
     self.parameterNode.EndModify(wasModified)
+
+  @whenDoneCall(updateParameterNodeFromGUI)
+  def addAutoSaveTimer(self, checked):
+    self.removeAutoSaveTimer()
+    if checked and not self.timer:
+      self.timer = qt.QTimer()
+      self.timer.setInterval(60000)
+      self.timer.connect('timeout()', self.logic.saveAffixVTKFile)
+      self.timer.start()
+
+  def removeAutoSaveTimer(self):
+    if self.timer:
+      self.timer.stop()
+      self.timer.timeout.disconnect()
+      self.timer = None
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onInputModelChanged(self, node):
@@ -695,8 +718,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
   def onDataModified(self):
     self._outputMesh.updateMesh()
-    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE)) is True:
-      self.saveAffixVTKFile(suffix="Temp")
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
@@ -1194,7 +1215,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     logging.info(f"Saving to directory: {outputDirectory}")
     self.saveTriangulatedMesh()
-    self.saveAffixVTKFile()
+    self.saveAffixVTKFile("")
     self.saveCMRepFile()
     subdividedModel = self.createSubdivideMesh()
     if subdividedModel:
@@ -1206,13 +1227,14 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       slicer.util.saveNode(inflatedModel, str(Path(outputDirectory) / f"{inflatedModel.GetName()}.vtk"))
       slicer.mrmlScene.RemoveNode(inflatedModel)
 
-  def saveAffixVTKFile(self, suffix=""):
+  def saveAffixVTKFile(self, suffix="Temp"):
     if self.inputModel is None:
       return
 
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     writer = CustomInformationWriter(self.data)
     out = f"{outputDirectory}/{self.inputModel.GetName()}{suffix}Affix.vtk"
+    logging.info(f"Saving file {out}")
     writer.writeCustomDataToFile(out)
 
   def saveTriangulatedMesh(self):

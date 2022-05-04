@@ -122,6 +122,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     uiWidget.setMRMLScene(slicer.mrmlScene)
 
   def configureUI(self):
+    self.ui.saveAndPreviewButton.collapsed = True
+
     # only use fiducial nodes created in this module
     self.ui.pointLabelSelector.addAttribute("vtkMRMLMarkupsFiducialNode", "ModuleName", self.moduleName)
 
@@ -173,7 +175,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.saveButton.clicked.connect(self.logic.save)
 
   def deactivateModes(self):
-    for b in [self.ui.placeTriangleButton, self.ui.assignTriangleButton, self.ui.deleteTriangleButton]:
+    for b in [self.ui.placeTriangleButton, self.ui.assignTriangleButton, self.ui.deleteTriangleButton,
+              self.ui.flipNormalsButton]:
       if b.checked:
         b.setChecked(False)
 
@@ -306,13 +309,16 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onInputModelChanged(self, node):
+    buttons = [self.ui.pointLabelsCollapsibleButton, self.ui.triangleLabelsCollapsibleButton]
     if node and not node.GetPolyData().GetPointData().GetArray("Radius"):
       slicer.util.errorDisplay("No 'Radius' array found in point data. The selected model may not a Voronoi skeleton.")
       wasBlocked = self.ui.inputModelSelector.blockSignals(True)
       self.ui.inputModelSelector.setCurrentNode(None)
       self.ui.inputModelSelector.blockSignals(wasBlocked)
+      self.enableWidgets(buttons, False)
       return
 
+    self.enableWidgets(buttons, node is not None)
     if node and not self.ui.outputModelSelector.currentNode():
       outputModelId = node.GetNodeReferenceID("OutputMeshModel")
       outputModel = None
@@ -354,7 +360,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onPointLabelSelected(self, node):
-    self.ui.pointTypeCombobox.setEnabled(node is not None)
+    self.enableWidgets([self.ui.pointTypeCombobox, self.ui.pointIndexSpinbox], node is not None)
 
     if not node:
       self.ui.pointTypeCombobox.setCurrentIndex(0)
@@ -402,12 +408,18 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       pointLabelNode.GetAttribute("AnatomicalIndex") is not None
     )
 
+  def enableWidgets(self, widgets, condition):
+    for w in widgets:
+      w.setEnabled(condition)
+
   @whenDoneCall(updateParameterNodeFromGUI)
   def onTriangleLabelSelected(self, node):
     self.ui.placeTriangleButton.setEnabled(node is not None)
+    buttons = [self.ui.placeTriangleButton, self.ui.deleteTriangleButton,
+               self.ui.assignTriangleButton, self.ui.flipNormalsButton, self.ui.triangleColorPickerButton]
+    self.enableWidgets(buttons, node is not None)
     if not node:
-      if self.ui.placeTriangleButton.checked:
-        self.ui.placeTriangleButton.setChecked(False)
+      self.deactivateModes()
       return
 
     for lblIdx, triLabel in enumerate(self.logic.data.vectorLabelInfo):

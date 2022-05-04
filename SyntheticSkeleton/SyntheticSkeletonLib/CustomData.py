@@ -40,9 +40,16 @@ class LabelTriangle:
 class TagPoint:
   pos: Point
   radius: float   # TODO: this could be calculated upon request
-  typeIndex: int  # tag index              TODO: could be direct connectio to TagInfo
-  comboBoxIndex: int  # index in combobox  TODO: could be direct relationship to triangle label
+  tag: TagInfo
   seq: int  # the sequence in all vertices  on skeleton
+
+  @property
+  def typeIndex(self):
+    return self.tag.tagType
+
+  @property
+  def typeName(self):
+    return self.tag.tagName
 
 
 @dataclass
@@ -78,12 +85,18 @@ class TagEdge:
 
 class CustomInformation(object):
 
+  def getTagInfo(self, node):
+    for ti in self.vectorTagInfo:
+      if ti.mrmlNodeID == node.GetID():
+        return ti
+    return None
+
   def triPtIds(self, tri):
     return [self.vectorTagPoints.index(p) for p in [tri.p1, tri.p2, tri.p3]]
 
   def getEdgeConstraint(self, tagPoint1: TagPoint, tagPoint2: TagPoint) -> int:
-    type1 = self.vectorTagInfo[tagPoint1.comboBoxIndex].tagType
-    type2 = self.vectorTagInfo[tagPoint2.comboBoxIndex].tagType
+    type1 = tagPoint1.typeIndex
+    type2 = tagPoint2.typeIndex
 
     # 1 = Branch point  2 = Free Edge point 3 = Interior point  4 = others
     if type1 == 1 and type2 == 1:  # branch points
@@ -126,8 +139,8 @@ class CustomInformation(object):
 
     self._readCustomDataLabel(fielddata)
     self._readCustomDataTag(fielddata)
-    self._readCustomDataPoints(fielddata)
     self._readCustomDataTriLabel(fielddata)
+    self._readCustomDataPoints(fielddata)
     self._readCustomDataTri(fielddata)
     self._readCustomDataEdge(fielddata)
 
@@ -177,8 +190,7 @@ class CustomInformation(object):
         pos=Point(ptsDBL.GetValue(i), ptsDBL.GetValue(i + 1), ptsDBL.GetValue(i + 2)),
         radius=ptsDBL.GetValue(i + 3),
         seq=int(ptsDBL.GetValue(i + 4)),
-        typeIndex=int(ptsDBL.GetValue(i + 5)),
-        comboBoxIndex=int(ptsDBL.GetValue(i + 6))
+        tag=self.vectorTagInfo[int(ptsDBL.GetValue(i + 6))]
       )
       self.vectorTagPoints.append(tagPt)
 
@@ -355,13 +367,14 @@ class CustomInformationWriter(object):
     fltArray4 = vtk.vtkFloatArray()
     fltArray4.SetName("TagPoints")
     for i in range(len(self.vectorTagPoints)):
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].pos.x)
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].pos.y)
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].pos.z)
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].radius)
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].seq)
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].typeIndex)
-      fltArray4.InsertNextValue(self.vectorTagPoints[i].comboBoxIndex)
+      pt = self.vectorTagPoints[i]
+      fltArray4.InsertNextValue(pt.pos.x)
+      fltArray4.InsertNextValue(pt.pos.y)
+      fltArray4.InsertNextValue(pt.pos.z)
+      fltArray4.InsertNextValue(pt.radius)
+      fltArray4.InsertNextValue(pt.seq)
+      fltArray4.InsertNextValue(pt.typeIndex)
+      fltArray4.InsertNextValue(self.vectorTagInfo.index(pt.tag))
     if len(self.vectorTagPoints) != 0:
       fielddata.AddArray(fltArray4)
 

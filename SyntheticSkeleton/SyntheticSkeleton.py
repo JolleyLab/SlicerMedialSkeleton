@@ -703,7 +703,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.addObserver(markupsNode, markupsNode.PointPositionDefinedEvent, self.onPointAdded)
     self.addObserver(markupsNode, markupsNode.PointStartInteractionEvent, self.onPointInteractionStarted)
     self.addObserver(markupsNode, markupsNode.PointEndInteractionEvent, self.onPointInteractionEnded)
-    self.addObserver(markupsNode, markupsNode.PointAboutToBeRemovedEvent, self.onPointRemoved)
+    self.addObserver(markupsNode, markupsNode.PointRemovedEvent, self.onPointRemoved)
 
   def onDataModified(self):
     self._outputMesh.updateMesh()
@@ -786,11 +786,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     for idx, ti in enumerate(self.data.vectorTagInfo):
       if ti.mrmlNodeID == node.GetID():
         del self.data.vectorTagInfo[idx]
-        for tp in self.data.vectorTagPoints:
-          if tp.comboBoxIndex == idx:
-            raise ValueError("This cannot be right")
-          if tp.comboBoxIndex > idx:
-            tp.comboBoxIndex -= 1
         break
 
     self.onDataModified()
@@ -833,7 +828,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
     for p in customInfo.vectorTagPoints:
       pos = p.pos
-      mn = markupNodes[p.comboBoxIndex]
+      mn = markupNodes[customInfo.vectorTagInfo.index(p.tag)]
       mn.AddControlPoint(vtk.vtkVector3d(pos.x, pos.y, pos.z))
 
     for tl in customInfo.vectorLabelInfo:
@@ -880,8 +875,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pt = TagPoint(
       pos=Point(*pos),
       radius=radius,
-      typeIndex=int(caller.GetAttribute("AnatomicalIndex")),
-      comboBoxIndex=list(self.getAllMarkupNodes()).index(caller), # TODO: check if this is the right way
+      tag=self.data.getTagInfo(caller),
       seq=vertIdx
     )
     print("New:", pt)
@@ -1390,7 +1384,7 @@ class Mesh:
     labelArray = vtk.vtkFloatArray()
     labelArray.SetName("Label")
     for pt in self.data.vectorTagPoints:
-      labelArray.InsertNextValue(pt.comboBoxIndex+1)
+      labelArray.InsertNextValue(pt.typeIndex)
     self.meshPoly.GetPointData().AddArray(labelArray)
 
     colorsArray = vtk.vtkUnsignedCharArray()

@@ -665,7 +665,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pass
 
   def resetData(self):
-    # TODO: need to clean point array
     self.data = CustomInformation(self.inputModel.GetPolyData() if self.inputModel else None)
     self._outputMesh.data = self.data
 
@@ -1205,10 +1204,9 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
   def save(self):
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     logging.info(f"Saving to directory: {outputDirectory}")
-    modelName = self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL)
     self.saveTriangulatedMesh()
     self.saveAffixVTKFile()
-    self.saveCMRepFile(outputDirectory, modelName)
+    self.saveCMRepFile()
     subdividedModel = self.createSubdivideMesh()
     if subdividedModel:
       slicer.util.saveNode(subdividedModel, str(Path(outputDirectory) / f"{subdividedModel.GetName()}.vtk"))
@@ -1235,7 +1233,10 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     outputModel = self._outputMesh.meshModelNode
     slicer.util.saveNode(outputModel, str(Path(outputDirectory) / f"{outputModel.GetName()}.vtk"))
 
-  def saveCMRepFile(self, outputDirectory, modelName):
+  def saveCMRepFile(self):
+    outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
+    model = self.parameterNode.GetNodeReference(PARAM_OUTPUT_MODEL)
+    modelName = model.GetName()
     outFile = Path(outputDirectory) / f"{modelName}.cmrep"
 
     attrs = OrderedDict({

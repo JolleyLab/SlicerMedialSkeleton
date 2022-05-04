@@ -48,6 +48,10 @@ class TagPoint:
     return self.tag.tagIndex
 
   @property
+  def tagType(self):
+      return self.tag.tagType
+
+  @property
   def typeName(self):
     return self.tag.tagName
 
@@ -95,8 +99,8 @@ class CustomInformation(object):
     return [self.vectorTagPoints.index(p) for p in tri.points]
 
   def getEdgeConstraint(self, tagPoint1: TagPoint, tagPoint2: TagPoint) -> int:
-    type1 = tagPoint1.typeIndex
-    type2 = tagPoint2.typeIndex
+    type1 = tagPoint1.tagType
+    type2 = tagPoint2.tagType
 
     # 1 = Branch point  2 = Free Edge point 3 = Interior point  4 = others
     if type1 == 1 and type2 == 1:  # branch points

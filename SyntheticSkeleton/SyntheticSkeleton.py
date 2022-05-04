@@ -782,9 +782,10 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         break
 
     for triIdx in sorted(delete, reverse=True):
-      self.deleteTriangle(triIdx)
+      del self.data.vectorTagTriangles[triIdx]
 
     self.removeObserver(node, vtk.vtkCommand.ModifiedEvent, self.onTriangleModified)
+    self.generateEdges()
     self.onDataModified()
 
   def onPointLabelRemoved(self, node):
@@ -797,6 +798,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         del self.data.vectorTagInfo[idx]
         break
 
+    self.generateEdges()
     self.onDataModified()
 
   def onTriangleModified(self, caller, event):
@@ -955,9 +957,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         newDict[key] =  val
     self.pointArray = newDict
 
-    self.generateEdges()
-
     if callModified:
+      self.generateEdges()
       self.onDataModified()
 
   def generateEdges(self):
@@ -1121,8 +1122,9 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
     for triIdx, tri in enumerate(self.data.vectorTagTriangles):
       if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
-        self.deleteTriangle(triIdx)
+        del self.data.vectorTagTriangles[triIdx]
         break
+    self.generateEdges()
     self.onDataModified()
 
   def flipTriangleNormal(self, pos):
@@ -1134,23 +1136,10 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
         # flip the 2nd and 3rd vertices
         tempPos = tri.p2
-        tri.p2= tri.p3
+        tri.p2 = tri.p3
         tri.p3 = tempPos
         break
     self.onDataModified()
-
-  def deleteTriangle(self, triIdx):
-    tri = self.data.vectorTagTriangles[triIdx]
-    triPtIds = self.data.triPtIds(tri)
-
-    edgeId1 = pairNumber(triPtIds[0], triPtIds[1])
-    edgeId2 = pairNumber(triPtIds[1], triPtIds[2])
-    edgeId3 = pairNumber(triPtIds[2], triPtIds[0])
-
-    self.data.vectorTagEdges[edgeId1].numEdge -= 1
-    self.data.vectorTagEdges[edgeId2].numEdge -= 1
-    self.data.vectorTagEdges[edgeId3].numEdge -= 1
-    del self.data.vectorTagTriangles[triIdx]
 
   def deletePointIdxRelatedEdges(self, globPIdx):
     delete = [key for key, ed in self.data.vectorTagEdges.items() if any(pId == globPIdx for pId in ed.edgPtIds)]

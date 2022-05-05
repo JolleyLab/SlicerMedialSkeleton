@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>447</width>
-    <height>1438</height>
+    <height>1464</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -92,7 +92,7 @@
          <bool>true</bool>
         </property>
         <property name="noneDisplay">
-         <string>Select Output Surface (will be generated otherwise)</string>
+         <string>Output Mesh will be generated</string>
         </property>
        </widget>
       </item>

@@ -1,7 +1,5 @@
 import vtk, qt, slicer
 
-import logging
-
 from SyntheticSkeletonLib.CustomData import *
 from SyntheticSkeletonLib.Constants import *
 from SyntheticSkeletonLib.Utils import *
@@ -123,6 +121,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
   def configureUI(self):
     self.ui.saveAndPreviewButton.collapsed = True
+    self.ui.outputModelSelector.enabled = False
 
     # only use fiducial nodes created in this module
     self.ui.pointLabelSelector.addAttribute("vtkMRMLMarkupsFiducialNode", "ModuleName", self.moduleName)
@@ -210,7 +209,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       # self.logic.getParameterNode()
       self.initializeParameterNode()
 
-    print(self.parameterNode.GetParameterNames())
+    logging.debug(self.parameterNode.GetParameterNames())
 
   def initializeParameterNode(self):
     """
@@ -319,7 +318,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       return
 
     self.enableWidgets(buttons, node is not None)
-    if node and not self.ui.outputModelSelector.currentNode():
+    if node:
       outputModelId = node.GetNodeReferenceID("OutputMeshModel")
       outputModel = None
       if outputModelId:
@@ -332,6 +331,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.ui.outputModelSelector.setCurrentNode(outputModel)
       self.onOutputModelChanged(outputModel)
       self.ui.outputModelSelector.blockSignals(wasBlocked)
+    else:
+      self.ui.outputModelSelector.setCurrentNode(None)
     self.logic.inputModel = node
 
   @whenDoneCall(updateParameterNodeFromGUI)
@@ -542,7 +543,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
           try:
             nextPtIndices = \
               self.logic.attemptToAddTriangle(self._selectedPoints, self.ui.triangleLabelSelector.currentNodeID)
-            print(nextPtIndices)
+            logging.debug(nextPtIndices)
             if not nextPtIndices:
               self.clearSelection()
             else:
@@ -746,7 +747,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.data.vectorLabelInfo.append(
       LabelTriangle(labelName=node.GetName(), labelColor=str(color), mrmlNodeID=node.GetID())
     )
-    # print(self.data.vectorLabelInfo)
+    # logging.debug(self.data.vectorLabelInfo)
     self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onTriangleModified)
 
   def onPointLabelAdded(self, node):
@@ -777,7 +778,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     node = calldata
     if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
         node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "Triangle":
-        print("triangle deleted")
         self.onTriangleLabelRemoved(node)
     elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName:
       self.onPointLabelRemoved(node)
@@ -818,7 +818,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if caller.GetID() == tl.mrmlNodeID:
         tl.labelName = caller.GetName()
         tl.labelColor = caller.GetAttribute("Color")
-        # print(self.data.vectorLabelInfo)
+        # logging.debug(self.data.vectorLabelInfo)
         break
     self.onDataModified()
 
@@ -831,7 +831,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         ti.tagType = int(node.GetAttribute("TypeIndex") if node.GetAttribute("TypeIndex") else -1)
         ti.tagIndex = int(node.GetAttribute("AnatomicalIndex"))
         ti.tagColor = Color(color[0] * 255, color[1] * 255, color[2] * 255)
-        # print(self.data.vectorTagInfo)
+        # logging.debug(self.data.vectorTagInfo)
         break
     self.onDataModified()
 
@@ -887,9 +887,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     return vertexIdx, radiusArray.GetValue(vertexIdx)
 
   def onPointAdded(self, caller, event):
-    print("Point Added")
+    logging.debug("Point Added")
     pointIdx = caller.GetNumberOfControlPoints()-1
-    # print(pointIdx)
     pos = caller.GetNthControlPointPosition(pointIdx)
     vertIdx, radius = self.getClosestVertexAndRadius(pos)
     poly = self.inputModel.GetPolyData()
@@ -901,7 +900,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       tag=self.data.getTagInfo(caller),
       seq=vertIdx
     )
-    print("New:", pt)
+    logging.debug(f"New: {pt}")
     self.data.vectorTagPoints.append(pt)
     self.pointArray[(caller.GetID(), pointIdx)] = len(self.data.vectorTagPoints) - 1
 
@@ -912,7 +911,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
   @vtk.calldata_type(vtk.VTK_INT)
   def onPointModified(self, caller, event, pointIdx):
-    # print(f"modified event {caller.GetID}, {pointIdx}, {self.pointArray[(caller.GetID(), pointIdx)]}")
+    # logging.debug(f"modified event {caller.GetID}, {pointIdx}, {self.pointArray[(caller.GetID(), pointIdx)]}")
 
     pointIdx = caller.GetDisplayNode().GetActiveControlPoint()
     pos = caller.GetNthControlPointPosition(pointIdx)
@@ -938,11 +937,11 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
   @vtk.calldata_type(vtk.VTK_INT)
   def onPointRemoved(self, caller, event, localPointIdx, callModified=True):
-    print("onPointRemoved")
+    logging.debug(f"onPointRemoved: {caller.GetID()}, idx: {localPointIdx}")
     try:
       globPIdx = self.pointArray[(caller.GetID(), localPointIdx)]
     except KeyError:
-      print("could not find point in global array")
+      logging.debug("could not find point in global array")
       return
 
     # delete triangles
@@ -1017,8 +1016,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
         tri = self.createTriangle(triPtIds, triLabel)
         self.onDataModified()
         nextTriPtIds = self.getNextTriPt(tri)
-        print("after ", triPtIds)
-        print("Next PT ids ", nextTriPtIds)
+        logging.debug(f"after {triPtIds}")
+        logging.debug(f"Next PT ids {nextTriPtIds}")
         return [triPtIds.index(ptId) for ptId in nextTriPtIds]
     raise ValueError("No valid triangle label found")
 
@@ -1055,12 +1054,12 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       return []
 
   def createTriangle(self, triPtIds, label):
-    print(f"ID {triPtIds}")
+    logging.debug(f"ID {triPtIds}")
 
     # CurvePointOrder
-    print(triPtIds)
+    logging.debug(triPtIds)
     triPtIds = self.checkNormal(triPtIds.copy())
-    print(triPtIds)
+    logging.debug(triPtIds)
     m = self.checkEdgeConstraints(triPtIds)
     if m:
       raise ValueError(m)
@@ -1288,7 +1287,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       slicer.cli.run(slicer.modules.inflatemedialmodel, None, params, wait_for_completion=True)
       return outputModel
     except Exception as exc:
-      print(exc)
+      logging.debug(exc)
       return None
 
   def createSubdivideMesh(self):

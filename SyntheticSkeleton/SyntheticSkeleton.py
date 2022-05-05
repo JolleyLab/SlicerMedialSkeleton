@@ -353,7 +353,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     else:
       self.removeObservers(self.onOutputMeshModified)
 
-    self.logic.setOutputModel(node)
+    self.logic.outputModel = node
 
   def onOutputMeshModified(self, caller=None, event=None):
     self.ui.pointNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPoints()))
@@ -675,6 +675,18 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if customInfo.hasCustomData() is not None and len(list(self.getAllMarkupNodes())) == 0:
         self.readCustomInformation(customInfo)
 
+  @property
+  def outputModel(self):
+    mrmlNodeId = self.parameterNode.GetNodeReferenceID(PARAM_OUTPUT_MODEL)
+    if not mrmlNodeId:
+      return None
+    else:
+      return slicer.util.getNode(mrmlNodeId)
+
+  @outputModel.setter
+  def outputModel(self, node):
+    self.parameterNode.SetNodeReferenceID(PARAM_OUTPUT_MODEL, "" if node is None else node.GetID())
+
   def __init__(self):
     VTKObservationMixin.__init__(self)
     ScriptedLoadableModuleLogic.__init__(self)
@@ -682,7 +694,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.locator = None
     self.data = CustomInformation()
     self.pointArray = dict()
-    self._outputMesh = Mesh(self.data)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
 
@@ -691,7 +702,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
   def resetData(self):
     self.data = CustomInformation(self.inputModel.GetPolyData() if self.inputModel else None)
-    self._outputMesh.data = self.data
 
   def createParameterNode(self):
     parameterNode = ScriptedLoadableModuleLogic.createParameterNode(self)
@@ -703,6 +713,56 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if not parameterNode.GetParameter(paramName):
         parameterNode.SetParameter(paramName, str(paramDefaultValue))
 
+  def updateOutputMesh(self):
+    triangles = vtk.vtkCellArray()
+
+    meshPoly = vtk.vtkPolyData()
+    meshPoints = vtk.vtkPoints()
+    meshPoly.SetPoints(meshPoints)
+
+    for pt in self.data.vectorTagPoints:
+      meshPoints.InsertNextPoint(astuple(pt.pos))
+
+    radiusArray = vtk.vtkFloatArray()
+    radiusArray.SetName("Radius")
+    for pt in self.data.vectorTagPoints:
+      radiusArray.InsertNextValue(pt.radius)
+    meshPoly.GetPointData().AddArray(radiusArray)
+
+    labelArray = vtk.vtkFloatArray()
+    labelArray.SetName("Label")
+    for pt in self.data.vectorTagPoints:
+      labelArray.InsertNextValue(pt.typeIndex)
+    meshPoly.GetPointData().AddArray(labelArray)
+
+    colorsArray = vtk.vtkUnsignedCharArray()
+    colorsArray.SetNumberOfComponents(3)
+    colorsArray.SetName("Colors")
+
+    for tri in self.data.vectorTagTriangles:
+      triPtIds = self.data.triPtIds(tri)
+      triangle = vtk.vtkTriangle()
+      triangle.GetPointIds().SetId(0, triPtIds[0])
+      triangle.GetPointIds().SetId(1, triPtIds[1])
+      triangle.GetPointIds().SetId(2, triPtIds[2])
+      triangles.InsertNextCell(triangle)
+
+      color = qt.QColor(tri.label.labelColor)
+      colorsArray.InsertNextTuple3(color.red(), color.green(), color.blue())
+
+    fltArray8 = vtk.vtkFloatArray()
+    fltArray8.SetName("TriangleLabel")
+    for ti in self.data.vectorTagTriangles:
+      fltArray8.InsertNextValue(self.data.vectorLabelInfo.index(ti.label) + 1)
+    meshPoly.GetCellData().AddArray(fltArray8)
+
+    meshPoly.GetCellData().SetScalars(colorsArray)
+    meshPoly.SetPoints(meshPoints)
+    meshPoly.SetPolys(triangles)
+
+    self.outputModel.SetAndObservePolyData(meshPoly)
+    self.outputModel.Modified()
+
   def configurePointLocator(self, node):
     if node:
       self.locator = vtk.vtkKdTreePointLocator()
@@ -710,9 +770,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       self.locator.BuildLocator()
     else:
       self.locator = None
-
-  def setOutputModel(self, node):
-    self._outputMesh.setMeshModelNode(node)
 
   def getAllMarkupNodes(self):
     return filter(lambda node: node.GetAttribute('ModuleName') == self.moduleName,
@@ -730,7 +787,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.addObserver(markupsNode, markupsNode.PointRemovedEvent, self.onPointRemoved)
 
   def onDataModified(self):
-    self._outputMesh.updateMesh()
+    self.updateOutputMesh()
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
@@ -917,7 +974,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pos = caller.GetNthControlPointPosition(pointIdx)
     pt = self.data.vectorTagPoints[self.pointArray[(caller.GetID(), pointIdx)]]
     pt.pos = Point(*pos)
-    self._outputMesh.updateMesh()
+    self.updateOutputMesh()
 
   def onPointInteractionEnded(self, caller, event):
     self.removeObserver(caller, caller.PointModifiedEvent, self.onPointModified)
@@ -1112,9 +1169,9 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     return edge
 
   def assignTriangleLabel(self, pos, triLabelId: str):
-    poly = self._outputMesh.meshPoly
-    if not poly:
+    if not self.outputModel:
       return
+    poly = self.outputModel.GetPolyData()
 
     for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
       if triLabel.mrmlNodeID == triLabelId:
@@ -1127,9 +1184,9 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     return "No valid triangle label found"
 
   def attemptTriangleDeletion(self, pos):
-    poly = self._outputMesh.meshPoly
-    if not poly:
+    if not self.outputModel:
       return
+    poly = self.outputModel.GetPolyData()
 
     for triIdx, tri in enumerate(self.data.vectorTagTriangles):
       if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
@@ -1139,9 +1196,9 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     self.onDataModified()
 
   def flipTriangleNormal(self, pos):
-    poly = self._outputMesh.meshPoly
-    if not poly:
+    if not self.outputModel:
       return
+    poly = self.outputModel.GetPolyData()
 
     for triIdx, tri in enumerate(self.data.vectorTagTriangles):
       if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
@@ -1238,10 +1295,10 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     writer.writeCustomDataToFile(out)
 
   def saveTriangulatedMesh(self):
-    if self._outputMesh is None or self._outputMesh.meshModelNode is None:
+    outputModel = self.outputModel
+    if outputModel is None:
       return
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
-    outputModel = self._outputMesh.meshModelNode
     slicer.util.saveNode(outputModel, str(Path(outputDirectory) / f"{outputModel.GetName()}.vtk"))
 
   def saveCMRepFile(self):
@@ -1364,65 +1421,3 @@ class SyntheticSkeletonTest(ScriptedLoadableModuleTest):
 
     self.delayDisplay('Test passed')
 
-
-class Mesh:
-
-  def __init__(self, data: CustomInformation):
-    self.meshModelNode = None
-    self.meshPoly = None
-    self.data = data
-
-  def setMeshModelNode(self, destination):
-    self.meshModelNode = destination
-    if self.meshModelNode:
-      self.updateMesh()
-
-  def updateMesh(self):
-    triangles = vtk.vtkCellArray()
-
-    self.meshPoly = vtk.vtkPolyData()
-    self.meshPoints = vtk.vtkPoints()
-    self.meshPoly.SetPoints(self.meshPoints)
-
-    for pt in self.data.vectorTagPoints:
-      self.meshPoints.InsertNextPoint(astuple(pt.pos))
-
-    radiusArray = vtk.vtkFloatArray()
-    radiusArray.SetName("Radius")
-    for pt in self.data.vectorTagPoints:
-      radiusArray.InsertNextValue(pt.radius)
-    self.meshPoly.GetPointData().AddArray(radiusArray)
-
-    labelArray = vtk.vtkFloatArray()
-    labelArray.SetName("Label")
-    for pt in self.data.vectorTagPoints:
-      labelArray.InsertNextValue(pt.typeIndex)
-    self.meshPoly.GetPointData().AddArray(labelArray)
-
-    colorsArray = vtk.vtkUnsignedCharArray()
-    colorsArray.SetNumberOfComponents(3)
-    colorsArray.SetName("Colors")
-
-    for tri in self.data.vectorTagTriangles:
-      triPtIds = self.data.triPtIds(tri)
-      triangle = vtk.vtkTriangle()
-      triangle.GetPointIds().SetId(0, triPtIds[0])
-      triangle.GetPointIds().SetId(1, triPtIds[1])
-      triangle.GetPointIds().SetId(2, triPtIds[2])
-      triangles.InsertNextCell(triangle)
-
-      color = qt.QColor(tri.label.labelColor)
-      colorsArray.InsertNextTuple3(color.red(), color.green(), color.blue())
-
-    fltArray8 = vtk.vtkFloatArray()
-    fltArray8.SetName("TriangleLabel")
-    for ti in self.data.vectorTagTriangles:
-      fltArray8.InsertNextValue(self.data.vectorLabelInfo.index(ti.label) + 1)
-    self.meshPoly.GetCellData().AddArray(fltArray8)
-
-    self.meshPoly.GetCellData().SetScalars(colorsArray)
-    self.meshPoly.SetPoints(self.meshPoints)
-    self.meshPoly.SetPolys(triangles)
-
-    self.meshModelNode.SetAndObservePolyData(self.meshPoly)
-    self.meshModelNode.Modified()

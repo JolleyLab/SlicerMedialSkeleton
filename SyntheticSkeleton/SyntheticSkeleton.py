@@ -358,6 +358,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
   def onOutputMeshModified(self, caller=None, event=None):
     self.ui.pointNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPoints()))
     self.ui.triangleNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPolys()))
+    self.onSubdivisionLevelChanged(self.ui.subLevelSpinbox.value)
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onPointLabelSelected(self, node):

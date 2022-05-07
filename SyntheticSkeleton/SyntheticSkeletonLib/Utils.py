@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 from functools import wraps
+from .Constants import *
 import slicer
 
 
@@ -100,3 +101,51 @@ def deleteNode(name):
       slicer.mrmlScene.RemoveNode(node)
   except slicer.util.MRMLNodeNotFoundException:
     pass
+
+
+
+def configureDisplayNode(node, array):
+  dispNode = node.GetDisplayNode()
+  if not dispNode:
+    node.CreateDefaultDisplayNodes()
+    dispNode = node.GetDisplayNode()
+
+  if array is None:
+    dispNode.SetScalarVisibility(False)
+    return
+
+  arrayLocation = getArrayLocation(node.GetPolyData(), array)
+  if arrayLocation == -1:
+    print("Couldn't find array in polydata")
+    return
+
+  scalarName = array.GetName()
+  dispNode.SetActiveScalar(scalarName, arrayLocation)
+  dispNode.SetScalarVisibility(True)
+  if scalarName == SCALAR_TRIANGLE_COLOR_NAME:
+    dispNode.EdgeVisibilityOn()
+    dispNode.SetScalarRangeFlagFromString("UseDirectMapping")
+  elif scalarName in [SCALAR_RADIUS_NAME, SCALAR_TRIANGLE_COLOR_NAME, SCALAR_POINT_ANATOMICAL_INDEX_NAME]:
+    dispNode.EdgeVisibilityOff()
+    dispNode.SetAndObserveColorNodeID(SCALAR_COLOR_NODE_IDS[scalarName])
+    if scalarName == SCALAR_RADIUS_NAME:
+      dispNode.SetScalarRangeFlagFromString("UseData")
+    else:
+      dispNode.SetScalarRangeFlagFromString("UseColorNode")
+
+
+def getArrayLocation(polydata, array):
+  for locationIdx, locationData in enumerate([polydata.GetPointData(), polydata.GetCellData()]):
+    for idx in range(locationData.GetNumberOfArrays()):
+      if locationData.GetArray(idx) is array:
+        return locationIdx
+  return -1
+
+
+def getArrayByName(polydata, arrayName):
+  for locationData in [polydata.GetPointData(), polydata.GetCellData()]:
+    for idx in range(locationData.GetNumberOfArrays()):
+      arr = locationData.GetArray(idx)
+      if arr.GetName() == arrayName:
+        return arr
+  return None

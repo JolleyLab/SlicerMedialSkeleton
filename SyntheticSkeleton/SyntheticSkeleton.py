@@ -125,10 +125,16 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     # only use fiducial nodes created in this module
     self.ui.pointLabelSelector.addAttribute("vtkMRMLMarkupsFiducialNode", "ModuleName", self.moduleName)
 
-    self.ui.triangleLabelSelector.setNodeTypeLabel("Triangle", "vtkMRMLScriptedModuleNode")
-    self.ui.triangleLabelSelector.baseName = "Triangle"
+    self.ui.triangleLabelSelector.setNodeTypeLabel("TriangleLabel", "vtkMRMLScriptedModuleNode")
+    self.ui.triangleLabelSelector.baseName = "TriangleLabel"
     self.ui.triangleLabelSelector.addAttribute("vtkMRMLScriptedModuleNode", "ModuleName", self.moduleName)
-    self.ui.triangleLabelSelector.addAttribute("vtkMRMLScriptedModuleNode", "Type", "Triangle")
+    self.ui.triangleLabelSelector.addAttribute("vtkMRMLScriptedModuleNode", "Type", "TriangleLabel")
+
+    # set icons
+    self.ui.flipNormalsButton.setIcon(qt.QIcon(self.resourcePath("Icons/flip-icon.png")))
+    self.ui.assignTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/assign-icon.png")))
+    self.ui.placeTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/add-icon.png")))
+    self.ui.deleteTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/delete-icon.png")))
 
     for pointType in TAG_TYPES:
       self.ui.pointTypeCombobox.addItem(pointType)

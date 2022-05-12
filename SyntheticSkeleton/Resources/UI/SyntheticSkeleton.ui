@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>590</width>
-    <height>1468</height>
+    <height>1639</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -374,92 +374,117 @@ QCheckBox::indicator:checked
      <property name="title">
       <string>Point Labels</string>
      </property>
-     <layout class="QFormLayout" name="formLayout_3">
+     <layout class="QGridLayout" name="gridLayout_10">
       <item row="0" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Point Labels:</string>
+       <widget class="QFrame" name="frame_3">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
         </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="qMRMLNodeComboBox" name="pointLabelSelector">
-        <property name="nodeTypes">
-         <stringlist>
-          <string>vtkMRMLMarkupsFiducialNode</string>
-         </stringlist>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
         </property>
-        <property name="noneEnabled">
-         <bool>true</bool>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
         </property>
-        <property name="renameEnabled">
-         <bool>true</bool>
-        </property>
-        <property name="selectNodeUponCreation">
-         <bool>true</bool>
-        </property>
-        <property name="noneDisplay">
-         <string>Select Point Label</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Point Type:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QComboBox" name="pointTypeCombobox">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Point Index:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QSpinBox" name="pointIndexSpinbox">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>10</number>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0" colspan="2">
-       <widget class="qSlicerMarkupsPlaceWidget" name="markupsPlaceWidget">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="buttonsVisible">
-         <bool>true</bool>
-        </property>
-        <property name="deleteAllControlPointsOptionVisible">
-         <bool>true</bool>
-        </property>
-        <property name="unsetLastControlPointOptionVisible">
-         <bool>true</bool>
-        </property>
-        <property name="placeMultipleMarkups">
-         <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
-        </property>
-        <property name="currentNodeActive">
-         <bool>false</bool>
-        </property>
-        <property name="placeModePersistency">
-         <bool>false</bool>
-        </property>
+        <layout class="QGridLayout" name="gridLayout_9">
+         <item row="0" column="0">
+          <layout class="QGridLayout" name="gridLayout_8">
+           <item row="0" column="1" colspan="3">
+            <widget class="qMRMLNodeComboBox" name="pointLabelSelector">
+             <property name="nodeTypes">
+              <stringlist>
+               <string>vtkMRMLMarkupsFiducialNode</string>
+              </stringlist>
+             </property>
+             <property name="noneEnabled">
+              <bool>true</bool>
+             </property>
+             <property name="renameEnabled">
+              <bool>true</bool>
+             </property>
+             <property name="selectNodeUponCreation">
+              <bool>true</bool>
+             </property>
+             <property name="noneDisplay">
+              <string>Select Point Label</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QSpinBox" name="pointIndexSpinbox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>10</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QLabel" name="label_7">
+             <property name="text">
+              <string>Type:</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Current Label:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Anatomical Index:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0" colspan="4">
+            <widget class="qSlicerMarkupsPlaceWidget" name="markupsPlaceWidget">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="buttonsVisible">
+              <bool>true</bool>
+             </property>
+             <property name="deleteAllControlPointsOptionVisible">
+              <bool>true</bool>
+             </property>
+             <property name="unsetLastControlPointOptionVisible">
+              <bool>true</bool>
+             </property>
+             <property name="placeMultipleMarkups">
+              <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+             </property>
+             <property name="currentNodeActive">
+              <bool>false</bool>
+             </property>
+             <property name="placeModePersistency">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QComboBox" name="pointTypeCombobox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>

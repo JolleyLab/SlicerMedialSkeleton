@@ -787,7 +787,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
 
   def getAllTriangleNodes(self):
     return filter(lambda node: node.GetAttribute('ModuleName') == self.moduleName and
-                               node.GetAttribute('Type') == "Triangle",
+                               node.GetAttribute('Type') == "TriangleLabel",
                   slicer.util.getNodesByClass('vtkMRMLScriptedModuleNode'))
 
   def addMarkupNodesObserver(self, markupsNode):
@@ -803,7 +803,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
   def onNodeAdded(self, caller, event, node):
     logging.debug(f"onNodeAdded {node.GetID()}")
     if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
-        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "Triangle":
+        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "TriangleLabel":
         self.onTriangleLabelAdded(node)
     elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName:
         self.onPointLabelAdded(node)
@@ -844,7 +844,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
   def onNodeRemoved(self, caller, event, node):
     logging.debug(f"onNodeRemoved {node.GetID()}")
     if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
-        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "Triangle":
+        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "TriangleLabel":
         self.onTriangleLabelRemoved(node)
     elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName:
       self.onPointLabelRemoved(node)
@@ -925,7 +925,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       n = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScriptedModuleNode", tl.labelName)
       n.SetAttribute("ModuleName", self.moduleName)
       n.SetAttribute("Color", tl.labelColor)
-      n.SetAttribute("Type", "Triangle")
+      n.SetAttribute("Type", "TriangleLabel")
       self.onNodeAdded(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, n)
 
     self.data.vectorTagTriangles = []
@@ -1223,7 +1223,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     delete = [key for key, ed in self.data.vectorTagEdges.items() if any(pId == globPIdx for pId in ed.edgPtIds)]
     for key in delete:
       del self.data.vectorTagEdges[key]
-      
+
   def checkNormal(self, triPtIds):
     id1, id2, id3 = triPtIds
 

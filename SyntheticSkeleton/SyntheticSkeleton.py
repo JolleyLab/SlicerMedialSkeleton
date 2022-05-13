@@ -252,6 +252,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.inflateRadiusSpinbox.value = float(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS))
     self.ui.outputPathLineEdit.currentPath = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     self.ui.autoSaveCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE))
+    self.ui.snapCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_SNAP_POINTS_TO_SURFACE))
 
     inputModel = self.logic.inputModel
     if inputModel is not None:
@@ -292,6 +293,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.parameterNode.SetParameter(PARAM_OUTPUT_DIRECTORY, self.ui.outputPathLineEdit.currentPath)
     self.parameterNode.SetParameter(PARAM_AUTO_SAVE, str(self.ui.autoSaveCheckbox.checked))
     self.parameterNode.SetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME, self.ui.activeScalarCombobox.currentText)
+    self.parameterNode.SetParameter(PARAM_SNAP_POINTS_TO_SURFACE, str(self.ui.snapCheckbox.checked))
     self.parameterNode.EndModify(wasModified)
 
   @whenDoneCall(updateParameterNodeFromGUI)
@@ -959,7 +961,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pos = caller.GetNthControlPointPosition(pointIdx)
     vertIdx, radius = self.getClosestVertexAndRadius(pos)
     poly = self.inputModel.GetPolyData()
-    caller.SetNthControlPointPosition(pointIdx, poly.GetPoints().GetPoint(vertIdx))
+    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_SNAP_POINTS_TO_SURFACE)):
+      caller.SetNthControlPointPosition(pointIdx, poly.GetPoints().GetPoint(vertIdx))
 
     pt = TagPoint(
       pos=Point(*pos),
@@ -992,7 +995,8 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pos = caller.GetNthControlPointPosition(pointIdx)
     vertIdx, radius = self.getClosestVertexAndRadius(pos)
     poly = self.locator.GetDataSet()
-    caller.SetNthControlPointPosition(pointIdx, poly.GetPoints().GetPoint(vertIdx))
+    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_SNAP_POINTS_TO_SURFACE)):
+      caller.SetNthControlPointPosition(pointIdx, poly.GetPoints().GetPoint(vertIdx))
     pos = caller.GetNthControlPointPosition(pointIdx)
 
     pt = self.data.vectorTagPoints[self.pointArray[(caller.GetID(), pointIdx)]]

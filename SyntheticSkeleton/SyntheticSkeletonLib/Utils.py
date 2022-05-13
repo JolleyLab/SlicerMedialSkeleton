@@ -149,3 +149,10 @@ def getArrayByName(polydata, arrayName):
       if arr.GetName() == arrayName:
         return arr
   return None
+
+
+def confirmOrIgnoreDialog(message, title='Violation'):
+  import qt
+  box = qt.QMessageBox(qt.QMessageBox.Question, title, message)
+  box.setStandardButtons(qt.QMessageBox.Ok | qt.QMessageBox.Ignore)
+  return box.exec_() == qt.QMessageBox.Ok

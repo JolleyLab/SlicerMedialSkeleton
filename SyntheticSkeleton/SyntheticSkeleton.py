@@ -529,9 +529,9 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     if len(self._selectedPoints) > 1:
       m = self.logic.preCheckConstraints(self._selectedPoints)
-      if m:
-        slicer.util.warningDisplay(m, "Violation")
+      if m and confirmOrIgnoreDialog(m):
         self.clearLastSelection()
+        return
       else:
         if len(self._selectedPoints) == 3:
           try:

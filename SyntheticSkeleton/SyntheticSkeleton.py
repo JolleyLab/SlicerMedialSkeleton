@@ -139,6 +139,13 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     for pointType in TAG_TYPES:
       self.ui.pointTypeCombobox.addItem(pointType)
 
+    if hasattr(slicer.modules, "skeletontool"):
+      w = slicer.modules.skeletontool.createNewWidgetRepresentation()
+      self.ui.skeletonToolCollapsibleButton.layout().addWidget(w)
+    else:
+      logging.warning("slicer.modules.skeletontool could not be found. The CLI widget will be hidden.")
+      self.ui.skeletonToolCollapsibleButton.hide()
+
   def setupConnections(self):
     self.ui.outputPathLineEdit.currentPathChanged.connect(self.onOutputDirectoryChanged)
     self.ui.inputModelSelector.currentNodeChanged.connect(self.onInputModelChanged)
@@ -175,6 +182,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     self.ui.previewButton.toggled.connect(self.updatePreview)
     self.ui.saveButton.clicked.connect(self.logic.save)
+
+    self.ui.skeletonToolNoteBrowser.connect('anchorClicked(QUrl)', lambda url: slicer.util.selectModule(url.fragment()))
 
     self.ui.activeScalarCombobox.connect("currentArrayChanged(vtkAbstractArray*)", self.onActiveScalarChanged)
 

@@ -119,7 +119,6 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     uiWidget.setMRMLScene(slicer.mrmlScene)
 
   def configureUI(self):
-    self.ui.saveAndPreviewButton.collapsed = True
     self.ui.outputModelSelector.enabled = False
 
     # only use fiducial nodes created in this module
@@ -141,10 +140,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     if hasattr(slicer.modules, "skeletontool"):
       w = slicer.modules.skeletontool.createNewWidgetRepresentation()
-      self.ui.skeletonToolCollapsibleButton.layout().addWidget(w)
+      self.ui.tabWidget.widget(0).layout().addWidget(w)
     else:
       logging.warning("slicer.modules.skeletontool could not be found. The CLI widget will be hidden.")
-      self.ui.skeletonToolCollapsibleButton.hide()
+      self.ui.tabWidget.removeTab(0)
 
   def setupConnections(self):
     self.ui.outputPathLineEdit.currentPathChanged.connect(self.onOutputDirectoryChanged)

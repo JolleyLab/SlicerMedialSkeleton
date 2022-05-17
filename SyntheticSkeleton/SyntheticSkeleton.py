@@ -185,6 +185,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.constantRadiusSpinbox.valueChanged.connect(lambda v: self.updateParameterNodeFromGUI())
     self.ui.inflateModelCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
     self.ui.inflateRadiusSpinbox.valueChanged.connect(lambda v: self.updateParameterNodeFromGUI())
+    self.ui.snapCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
 
     self.ui.previewButton.toggled.connect(self.updatePreview)
     self.ui.saveButton.clicked.connect(self.logic.save)
@@ -364,7 +365,6 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.activeScalarCombobox.setDataSet(outputModel.GetPolyData() if outputModel else None)
     self.ui.activeScalarCombobox.blockSignals(wasBlocked)
     if outputModel is not None:
-      logging.info(f"test: {self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME)}")
       scalarIndex = \
         self.ui.activeScalarCombobox.findText(self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME))
       self.ui.activeScalarCombobox.setCurrentIndex(scalarIndex)
@@ -1448,10 +1448,10 @@ class KeyboardShortcutObserver(qt.QObject):
       # print(event)
       if event.type() == qt.QKeyEvent.KeyPress:
         self.modeCallback(True)
-        logging.debug("pressed A")
+        logging.debug("KeyPress event")
       elif event.type() == qt.QKeyEvent.KeyRelease:
         self.modeCallback(False)
-        logging.debug("released A")
+        logging.debug("KeyRelease event")
       return True
 
 #

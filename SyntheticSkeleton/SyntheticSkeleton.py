@@ -138,9 +138,15 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     for pointType in TAG_TYPES:
       self.ui.pointTypeCombobox.addItem(pointType)
 
+    tabWidget = self.ui.tabWidget
+    tabBar = tabWidget.tabBar()
+    tabBar.setTabIcon(1, qt.QIcon(self.resourcePath('Icons/add-icon.png')))
+    tabBar.setTabIcon(2, tabWidget.style().standardIcon(qt.QStyle.SP_DialogSaveButton))
+
     if hasattr(slicer.modules, "skeletontool"):
       w = slicer.modules.skeletontool.createNewWidgetRepresentation()
-      self.ui.tabWidget.widget(0).layout().addWidget(w)
+      tabWidget.widget(0).layout().addWidget(w)
+      tabBar.setTabIcon(0, qt.QIcon(self.resourcePath('Icons/SyntheticSkeleton.png')))
     else:
       logging.warning("slicer.modules.skeletontool could not be found. The CLI widget will be hidden.")
       self.ui.tabWidget.removeTab(0)

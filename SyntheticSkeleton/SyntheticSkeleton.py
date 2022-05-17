@@ -105,6 +105,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self._observations = []
     self.threeDViewClickObserver = None
     self.endPlacementObserver =  None
+    self.placePointsShortcutObserver = None
 
     self.configureUI()
     self.setupConnections()
@@ -200,17 +201,23 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     if self.ui.markupsPlaceWidget.placeModeEnabled is True:
       self.ui.markupsPlaceWidget.placeModeEnabled = False
+    if self.placePointsShortcutObserver:
+      logging.info("removing shortcut observer")
+      slicer.util.mainWindow().removeEventFilter(self.placePointsShortcutObserver)
+      self.placePointsShortcutObserver = None
 
   def exit(self):
     """
     Called each time the user opens a different module.
     """
+    logging.info("exit")
     self.deactivateModes()
     self.removeAutoSaveTimer()
 
   def enter(self):
     if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE)) is True:
       self.addAutoSaveTimer()
+    self.enableMarkupsPlaceWidget()
 
   def onSceneStartClose(self, caller, event):
     """
@@ -378,6 +385,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     if not node:
       self.ui.pointTypeCombobox.setCurrentIndex(0)
+      self.enableMarkupsPlaceWidget()
       return
 
     self.logic.addMarkupNodesObserver(node)
@@ -406,10 +414,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       pointLabelNode.SetAttribute("TypeIndex", str(index))
     else:
       pointLabelNode.RemoveAttribute("TypeIndex")
-    self.ui.markupsPlaceWidget.setEnabled(
-      pointLabelNode.GetAttribute("TypeIndex") is not None and
-      pointLabelNode.GetAttribute("AnatomicalIndex") is not None
-    )
+    self.enableMarkupsPlaceWidget()
 
   def onPointAnatomicalIndexChanged(self, value):
     pointLabelNode = self.ui.pointLabelSelector.currentNode()
@@ -417,10 +422,22 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       return
 
     pointLabelNode.SetAttribute("AnatomicalIndex", str(value))
+    self.enableMarkupsPlaceWidget()
+
+  def enableMarkupsPlaceWidget(self):
+    pointLabelNode = self.ui.pointLabelSelector.currentNode()
     self.ui.markupsPlaceWidget.setEnabled(
-      pointLabelNode.GetAttribute("TypeIndex") is not None and
+      pointLabelNode is not None and \
+      pointLabelNode.GetAttribute("TypeIndex") is not None and \
       pointLabelNode.GetAttribute("AnatomicalIndex") is not None
     )
+    if self.ui.markupsPlaceWidget.enabled and not self.placePointsShortcutObserver:
+      self.placePointsShortcutObserver = \
+        KeyboardShortcutObserver(qt.Qt.Key_A, self.ui.markupsPlaceWidget.setPlaceModeEnabled)
+      slicer.util.mainWindow().installEventFilter(self.placePointsShortcutObserver)
+    else:
+      slicer.util.mainWindow().removeEventFilter(self.placePointsShortcutObserver)
+      self.placePointsShortcutObserver = None
 
   def enableWidgets(self, widgets, condition):
     for w in widgets:
@@ -1418,6 +1435,24 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     outputModel.SetAndObservePolyData(subdivisionOutput)
     return outputModel
 
+
+class KeyboardShortcutObserver(qt.QObject):
+
+  def __init__(self, key, callback):
+    super(KeyboardShortcutObserver, self).__init__()
+    self.key = key
+    self.modeCallback = callback
+
+  def eventFilter(self, obj, event):
+    if type(event) == qt.QKeyEvent and event.key() == self.key and not event.isAutoRepeat():
+      # print(event)
+      if event.type() == qt.QKeyEvent.KeyPress:
+        self.modeCallback(True)
+        logging.debug("pressed A")
+      elif event.type() == qt.QKeyEvent.KeyRelease:
+        self.modeCallback(False)
+        logging.debug("released A")
+      return True
 
 #
 # SyntheticSkeletonTest

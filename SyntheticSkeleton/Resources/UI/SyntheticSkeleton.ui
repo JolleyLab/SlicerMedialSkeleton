@@ -39,8 +39,8 @@
      </property>
      <property name="iconSize">
       <size>
-       <width>32</width>
-       <height>32</height>
+       <width>48</width>
+       <height>48</height>
       </size>
      </property>
      <property name="elideMode">
@@ -1330,6 +1330,70 @@ QCheckBox::indicator:checked
     <hint type="destinationlabel">
      <x>171</x>
      <y>1075</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>inputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>443</x>
+     <y>733</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>482</x>
+     <y>81</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>outputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>443</x>
+     <y>733</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>482</x>
+     <y>123</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pointLabelSelector</sender>
+   <signal>currentNodeChanged(vtkMRMLNode*)</signal>
+   <receiver>markupsPlaceWidget</receiver>
+   <slot>setCurrentNode(vtkMRMLNode*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>438</x>
+     <y>314</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>439</x>
+     <y>395</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>markupsPlaceWidget</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>443</x>
+     <y>733</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>439</x>
+     <y>395</y>
     </hint>
    </hints>
   </connection>

@@ -18,6 +18,7 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/delete-icon.png
   Resources/Icons/assign-icon.png
   Resources/Icons/flip-icon.png
+  Resources/Icons/triangulate-icon.png
   )
 
 #-----------------------------------------------------------------------------

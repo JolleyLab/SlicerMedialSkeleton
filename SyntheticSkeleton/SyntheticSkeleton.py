@@ -140,7 +140,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     tabWidget = self.ui.tabWidget
     tabBar = tabWidget.tabBar()
-    tabBar.setTabIcon(1, qt.QIcon(self.resourcePath('Icons/add-icon.png')))
+    tabBar.setTabIcon(1, qt.QIcon(self.resourcePath('Icons/triangulate-icon.png')))
     tabBar.setTabIcon(2, tabWidget.style().standardIcon(qt.QStyle.SP_DialogSaveButton))
 
     if hasattr(slicer.modules, "skeletontool"):

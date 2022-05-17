@@ -412,7 +412,14 @@ QCheckBox::indicator:checked
                 </widget>
                </item>
                <item row="2" column="0" colspan="4">
-                <widget class="qSlicerMarkupsPlaceWidget" name="markupsPlaceWidget"/>
+                <widget class="qSlicerMarkupsPlaceWidget" name="markupsPlaceWidget">
+                 <property name="placeMultipleMarkups">
+                  <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+                 </property>
+                 <property name="placeModePersistency">
+                  <bool>false</bool>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
@@ -1000,7 +1007,7 @@ QCheckBox::indicator:checked
      </widget>
      <widget class="QWidget" name="saveTab">
       <attribute name="title">
-       <string>Save and Preview</string>
+       <string>Preview and Save</string>
       </attribute>
       <layout class="QFormLayout" name="formLayout_3">
        <item row="0" column="0">

@@ -306,7 +306,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS, str(self.ui.inflateRadiusSpinbox.value))
     self.parameterNode.SetParameter(PARAM_OUTPUT_DIRECTORY, self.ui.outputPathLineEdit.currentPath)
     self.parameterNode.SetParameter(PARAM_AUTO_SAVE, str(self.ui.autoSaveCheckbox.checked))
-    self.parameterNode.SetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME, self.ui.activeScalarCombobox.currentText)
+    if self.ui.activeScalarCombobox.currentText != "":
+      self.parameterNode.SetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME, self.ui.activeScalarCombobox.currentText)
     self.parameterNode.SetParameter(PARAM_SNAP_POINTS_TO_SURFACE, str(self.ui.snapCheckbox.checked))
     self.parameterNode.EndModify(wasModified)
 
@@ -356,6 +357,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.activeScalarCombobox.setDataSet(outputModel.GetPolyData() if outputModel else None)
     self.ui.activeScalarCombobox.blockSignals(wasBlocked)
     if outputModel is not None:
+      logging.info(f"test: {self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME)}")
       scalarIndex = \
         self.ui.activeScalarCombobox.findText(self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME))
       self.ui.activeScalarCombobox.setCurrentIndex(scalarIndex)
@@ -363,10 +365,12 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
   def onOutputMeshModified(self, caller=None, event=None):
     if not self.ui.flipNormalsButton.checked:
       self.configureActiveScalarBox()
-    if not caller:
-      return
-    self.ui.pointNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPoints()))
-    self.ui.triangleNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPolys()))
+    if caller is None:
+      self.ui.pointNumberLabel.setText("")
+      self.ui.triangleNumberLabel.setText("")
+    else:
+      self.ui.pointNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPoints()))
+      self.ui.triangleNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPolys()))
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onPointLabelSelected(self, node):

@@ -808,7 +808,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     meshPoly.SetPolys(triangles)
 
     self.outputModel.SetAndObservePolyData(meshPoly)
-    # self.outputModel.Modified()
 
   def configurePointLocator(self, node):
     if node:
@@ -1361,7 +1360,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       "Grid.Model.Atom.SubdivisionLevel": self.parameterNode.GetParameter(PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL),
       "Grid.Model.Coefficient.FileName": f"{modelName}.vtk",
       "Grid.Model.Coefficient.FileType": "VTK",
-      "Grid.Model.nLabels": len(set([t.tagIndex for t in self.data.vectorTagInfo]))
+      "Grid.Model.nLabels": len(self.data.vectorLabelInfo)
     })
 
     if self.parameterNode.GetParameter(PARAM_GRID_MODEL_SOLVER_TYPE) == "PDE":

@@ -9,9 +9,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>887</width>
-    <height>1468</height>
+    <width>575</width>
+    <height>921</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
@@ -35,7 +41,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="iconSize">
       <size>
@@ -62,34 +68,194 @@
       <attribute name="title">
        <string>Skeletonization</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_7">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
-        <widget class="QTextBrowser" name="skeletonToolNoteBrowser">
+        <widget class="QGroupBox" name="groupBox_2">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>0</height>
-          </size>
+         <property name="styleSheet">
+          <string notr="true">QGroupBox
+{
+    font-size: 18px;
+}</string>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>70</height>
-          </size>
+         <property name="title">
+          <string>Binary Image Input</string>
          </property>
-         <property name="html">
-          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Note: Once done,  you will have to hide the Input Model to see the Output Model. &lt;br /&gt;This can be done using the &lt;a href=&quot;#Models&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#419cff;&quot;&gt;Models&lt;/span&gt;&lt;/a&gt; module.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <layout class="QFormLayout" name="formLayout">
+          <item row="0" column="1">
+           <widget class="ctkPathLineEdit" name="inputImagePathLineEdit">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="filters">
+             <set>ctkPathLineEdit::Executable|ctkPathLineEdit::Files|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="loadBinaryImageButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Load as Model</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
+         <property name="styleSheet">
+          <string notr="true">QGroupBox
+{
+    font-size: 18px;
+}</string>
+         </property>
+         <property name="title">
+          <string>Polygon Decimation</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="0" column="2">
+           <widget class="QCheckBox" name="decimModelInpVisibilityCheckbox">
+            <property name="styleSheet">
+             <string notr="true">QCheckBox::indicator:unchecked
+  {
+    image: url(&quot;:Icons/VisibleOff.png&quot;);
+  }
+
+QCheckBox::indicator:checked
+  {
+    image: url(&quot;:Icons/VisibleOn.png&quot;);
+  }</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="qMRMLNodeComboBox" name="decimationOutputModelSelector">
+            <property name="nodeTypes">
+             <stringlist>
+              <string>vtkMRMLModelNode</string>
+             </stringlist>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>Reduction by %:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="qMRMLNodeComboBox" name="decimationInputModelSelector">
+            <property name="nodeTypes">
+             <stringlist>
+              <string>vtkMRMLModelNode</string>
+             </stringlist>
+            </property>
+            <property name="noneEnabled">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_17">
+            <property name="text">
+             <string>Input Model:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_18">
+            <property name="text">
+             <string>Output Model:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QCheckBox" name="decimModelOutVisibilityCheckbox">
+            <property name="styleSheet">
+             <string notr="true">QCheckBox::indicator:unchecked
+  {
+    image: url(&quot;:Icons/VisibleOff.png&quot;);
+  }
+
+QCheckBox::indicator:checked
+  {
+    image: url(&quot;:Icons/VisibleOn.png&quot;);
+  }</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLabel" name="inputModelNumPolygonsLabel">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLabel" name="outputModelNumPolygonsLabel">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1" colspan="3">
+           <widget class="ctkSliderWidget" name="decimationReductionSliderWidget">
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="singleStep">
+             <double>1.000000000000000</double>
+            </property>
+            <property name="pageStep">
+             <double>5.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1" colspan="3">
+           <widget class="ctkPushButton" name="decimateButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Decimate</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -1238,32 +1404,22 @@ p, li { white-space: pre-wrap; }
      </widget>
     </widget>
    </item>
+   <item>
+    <spacer name="verticalSpacer_5">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>qMRMLNodeComboBox</class>
-   <extends>QWidget</extends>
-   <header>qMRMLNodeComboBox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLWidget</class>
-   <extends>QWidget</extends>
-   <header>qMRMLWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qSlicerWidget</class>
-   <extends>QWidget</extends>
-   <header>qSlicerWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qSlicerMarkupsPlaceWidget</class>
-   <extends>qSlicerWidget</extends>
-   <header>qSlicerMarkupsPlaceWidget.h</header>
-  </customwidget>
   <customwidget>
    <class>ctkVTKDataSetArrayComboBox</class>
    <extends>QComboBox</extends>
@@ -1295,6 +1451,39 @@ p, li { white-space: pre-wrap; }
    <class>ctkPathLineEdit</class>
    <extends>QWidget</extends>
    <header>ctkPathLineEdit.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkPushButton</class>
+   <extends>QPushButton</extends>
+   <header>ctkPushButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkSliderWidget</class>
+   <extends>QWidget</extends>
+   <header>ctkSliderWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerMarkupsPlaceWidget</class>
+   <extends>qSlicerWidget</extends>
+   <header>qSlicerMarkupsPlaceWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -1440,6 +1629,54 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>736</x>
      <y>314</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>inputImagePathLineEdit</sender>
+   <signal>validInputChanged(bool)</signal>
+   <receiver>loadBinaryImageButton</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>302</x>
+     <y>462</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>505</x>
+     <y>462</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>decimationInputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>287</x>
+     <y>473</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>326</x>
+     <y>144</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>decimationOutputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>287</x>
+     <y>473</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>337</x>
+     <y>487</y>
     </hint>
    </hints>
   </connection>

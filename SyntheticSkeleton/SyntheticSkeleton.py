@@ -147,6 +147,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     if hasattr(slicer.modules, "skeletontool"):
       w = slicer.modules.skeletontool.createNewWidgetRepresentation()
       tabWidget.widget(0).layout().addWidget(w)
+      w.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Maximum)
+      tabWidget.widget(0).layout().addStretch(1)
       tabBar.setTabIcon(0, qt.QIcon(self.resourcePath('Icons/SyntheticSkeleton.png')))
     else:
       logging.warning("slicer.modules.skeletontool could not be found. The CLI widget will be hidden.")
@@ -170,9 +172,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       lambda : self.onDeleteAssignOrFlipTriangleButtonChecked(self.ui.assignTriangleButton))
     self.ui.flipNormalsButton.toggled.connect(
       lambda : self.onDeleteAssignOrFlipTriangleButtonChecked(self.ui.flipNormalsButton))
-
-    self.ui.skeletonVisibilityCheckbox.toggled.connect(self.onSkeletonVisibilityToggled)
-    self.ui.meshVisibilityCheckbox.toggled.connect(self.onMeshVisibilityToggled)
+    self.ui.skeletonVisibilityCheckbox.toggled.connect(
+      lambda t: self.onModelVisibilityToggled(self.ui.inputModelSelector, t))
+    self.ui.meshVisibilityCheckbox.toggled.connect(
+      lambda t: self.onModelVisibilityToggled(self.ui.outputModelSelector, t))
     self.ui.autoSaveCheckbox.toggled.connect(self.addAutoSaveTimer)
 
     self.ui.skeletonTransparencySlider.valueChanged.connect(self.onSkeletonTransparencySliderMoved)
@@ -187,10 +190,22 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.inflateRadiusSpinbox.valueChanged.connect(lambda v: self.updateParameterNodeFromGUI())
     self.ui.snapCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
 
+    self.ui.loadBinaryImageButton.clicked.connect(
+      lambda: self.logic.readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath))
+
+    self.ui.decimationInputModelSelector.currentNodeChanged.connect(self.onDecimationInputModelChanged)
+    self.ui.decimationOutputModelSelector.currentNodeChanged.connect(self.onDecimationOutputModelChanged)
+    self.ui.decimateButton.clicked.connect(self.onDecimateButtonClicked)
+    self.ui.decimModelInpVisibilityCheckbox.toggled.connect(
+      lambda t: self.onModelVisibilityToggled(self.ui.decimationInputModelSelector, t))
+    self.ui.decimModelOutVisibilityCheckbox.toggled.connect(
+      lambda t: self.onModelVisibilityToggled(self.ui.decimationOutputModelSelector, t))
+
+    self.ui.decimationReductionSliderWidget.valueChanged.connect(
+      lambda v: self.onDecimationReductionSliderValueChanged())
+
     self.ui.previewButton.toggled.connect(self.updatePreview)
     self.ui.saveButton.clicked.connect(self.logic.save)
-
-    self.ui.skeletonToolNoteBrowser.connect('anchorClicked(QUrl)', lambda url: slicer.util.selectModule(url.fragment()))
 
     self.ui.activeScalarCombobox.connect("currentArrayChanged(vtkAbstractArray*)", self.onActiveScalarChanged)
 
@@ -334,6 +349,55 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.timer.timeout.disconnect()
       self.timer = None
 
+  def onDecimateButtonClicked(self):
+    parameters = {"inputModel": self.ui.decimationInputModelSelector.currentNode().GetID(),
+                  "outputModel": self.ui.decimationOutputModelSelector.currentNode().GetID(),
+                  "reductionFactor": self.ui.decimationReductionSliderWidget.value / 100.0,
+                  "boundaryDeletion": True}
+    slicer.cli.run(slicer.modules.decimation, None, parameters, wait_for_completion=True)
+
+  def onDecimationInputModelChanged(self, node):
+    if node and node is self.ui.decimationOutputModelSelector.currentNode():
+      self.ui.decimationOutputModelSelector.setCurrentNode(None)
+    self._updateModelDecimationPolygonInfo()
+    self._updateDecimationVisibilityCheckboxes()
+    self._updateDecimateButtonEnabled()
+
+  def onDecimationOutputModelChanged(self, node):
+    if node and not node.GetDisplayNode():
+      node.CreateDefaultDisplayNodes()
+    if node and node is self.ui.decimationInputModelSelector.currentNode():
+      self.ui.decimationOutputModelSelector.setCurrentNode(None)
+    self._updateDecimationVisibilityCheckboxes()
+    self._updateDecimateButtonEnabled()
+
+  def onDecimationReductionSliderValueChanged(self):
+    self._updateModelDecimationPolygonInfo()
+    self._updateDecimateButtonEnabled()
+
+  def _updateModelDecimationPolygonInfo(self):
+    node = self.ui.decimationInputModelSelector.currentNode()
+    if node is not None:
+      numPolys = node.GetPolyData().GetNumberOfPolys()
+      reduction = self.ui.decimationReductionSliderWidget.value
+      self.ui.inputModelNumPolygonsLabel.setText(f"orig.\t{numPolys} Polygons")
+      self.ui.outputModelNumPolygonsLabel.setText(f"approx.\t{int(numPolys - numPolys * reduction // 100)} Polygons")
+    else:
+      self.ui.inputModelNumPolygonsLabel.setText("")
+      self.ui.outputModelNumPolygonsLabel.setText("")
+
+  def _updateDecimationVisibilityCheckboxes(self):
+    for cb, node in [(self.ui.decimModelInpVisibilityCheckbox, self.ui.decimationInputModelSelector.currentNode()),
+                     (self.ui.decimModelOutVisibilityCheckbox, self.ui.decimationOutputModelSelector.currentNode())]:
+      wasBlocked = cb.blockSignals(True)
+      cb.checked = node is not None and node.GetDisplayVisibility()
+      cb.blockSignals(wasBlocked)
+
+  def _updateDecimateButtonEnabled(self):
+    self.ui.decimateButton.setEnabled(self.ui.decimationInputModelSelector.currentNode() is not None and
+                                      self.ui.decimationOutputModelSelector.currentNode() is not None and
+                                      self.ui.decimationReductionSliderWidget.value != 0)
+
   def onInputModelChanged(self, node):
     buttons = [self.ui.pointLabelsCollapsibleButton, self.ui.triangleLabelsCollapsibleButton]
     if node and not node.GetPolyData().GetPointData().GetArray(SCALAR_RADIUS_NAME):
@@ -475,8 +539,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     triangleNode.SetAttribute("Color", str(color))
 
-  def onSkeletonVisibilityToggled(self, toggled):
-    node = self.ui.inputModelSelector.currentNode()
+  def onModelVisibilityToggled(self, selector, toggled):
+    node = selector.currentNode()
     if node:
       node.SetDisplayVisibility(toggled)
 
@@ -485,11 +549,6 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     if node:
       dNode = node.GetDisplayNode()
       dNode.SetOpacity(value)
-
-  def onMeshVisibilityToggled(self, toggled):
-    node = self.ui.outputModelSelector.currentNode()
-    if node:
-      node.SetDisplayVisibility(toggled)
 
   def onMeshTransparencySliderMoved(self, value):
     node = self.ui.outputModelSelector.currentNode()
@@ -1433,6 +1492,18 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     outputModel.SetName(f"{self.inputModel.GetName()}_Subdivide")
     outputModel.SetAndObservePolyData(subdivisionOutput)
     return outputModel
+
+  def readBinaryImageAndConvertToModel(self, path):
+    segNode = None
+    try:
+      segNode = slicer.util.loadSegmentation(path)
+      segmentationsLogic = slicer.modules.segmentations.logic()
+      segmentationsLogic.ExportVisibleSegmentsToModels(segNode, 0)
+    except RuntimeError as exc:
+      slicer.util.errorDisplay(exc, "RuntimeError")
+    finally:
+      if segNode:
+        slicer.mrmlScene.RemoveNode(segNode)
 
 
 class KeyboardShortcutObserver(qt.QObject):

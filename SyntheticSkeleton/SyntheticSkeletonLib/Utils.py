@@ -103,7 +103,6 @@ def deleteNode(name):
     pass
 
 
-
 def configureDisplayNode(node, array):
   dispNode = node.GetDisplayNode()
   if not dispNode:

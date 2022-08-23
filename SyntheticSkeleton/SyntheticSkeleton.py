@@ -189,6 +189,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.inflateModelCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
     self.ui.inflateRadiusSpinbox.valueChanged.connect(lambda v: self.updateParameterNodeFromGUI())
     self.ui.snapCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
+    self.ui.inputSkeletonColorPickerButton.colorChanged.connect(self.onInputSkeletonColorChanged)
 
     self.ui.loadBinaryImageButton.clicked.connect(
       lambda: self.logic.readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath))
@@ -208,6 +209,21 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.saveButton.clicked.connect(self.logic.save)
 
     self.ui.activeScalarCombobox.connect("currentArrayChanged(vtkAbstractArray*)", self.onActiveScalarChanged)
+
+  def onInputSkeletonColorChanged(self, color):
+    node = self.ui.inputModelSelector.currentNode()
+    if not node:
+      return
+
+    def hex2rgb(hex):
+      from PIL import ImageColor
+      return np.array(ImageColor.getcolor(hex, "RGB")) / 255.0
+
+    dnode = node.GetDisplayNode()
+    if not dnode:
+      node.CreateDefaultDisplayNodes()
+      dnode = node.GetDisplayNode()
+    dnode.SetColor(hex2rgb(str(color)))
 
   def deactivateModes(self):
     for b in [self.ui.placeTriangleButton, self.ui.assignTriangleButton, self.ui.deleteTriangleButton,

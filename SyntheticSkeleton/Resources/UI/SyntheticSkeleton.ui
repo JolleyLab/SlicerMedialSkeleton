@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>575</width>
-    <height>921</height>
+    <height>1232</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -41,7 +41,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <property name="iconSize">
       <size>
@@ -291,10 +291,21 @@ QCheckBox::indicator:checked
          <layout class="QGridLayout" name="gridLayout_12">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_11">
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_4">
+            <item row="0" column="2">
+             <widget class="QCheckBox" name="skeletonVisibilityCheckbox">
+              <property name="styleSheet">
+               <string notr="true">QCheckBox::indicator:unchecked
+  {
+    image: url(&quot;:Icons/VisibleOff.png&quot;);
+  }
+
+QCheckBox::indicator:checked
+  {
+    image: url(&quot;:Icons/VisibleOn.png&quot;);
+  }</string>
+              </property>
               <property name="text">
-               <string>Output Mesh</string>
+               <string/>
               </property>
              </widget>
             </item>
@@ -316,52 +327,6 @@ QCheckBox::indicator:checked
               </property>
              </widget>
             </item>
-            <item row="1" column="2">
-             <widget class="QCheckBox" name="meshVisibilityCheckbox">
-              <property name="styleSheet">
-               <string notr="true">QCheckBox::indicator:unchecked
-  {
-    image: url(&quot;:Icons/VisibleOff.png&quot;);
-  }
-
-QCheckBox::indicator:checked
-  {
-    image: url(&quot;:Icons/VisibleOn.png&quot;);
-  }</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="2">
-             <widget class="QCheckBox" name="skeletonVisibilityCheckbox">
-              <property name="styleSheet">
-               <string notr="true">QCheckBox::indicator:unchecked
-  {
-    image: url(&quot;:Icons/VisibleOff.png&quot;);
-  }
-
-QCheckBox::indicator:checked
-  {
-    image: url(&quot;:Icons/VisibleOn.png&quot;);
-  }</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_50">
-              <property name="toolTip">
-               <string>This folder is also used for saving the temporary state. </string>
-              </property>
-              <property name="text">
-               <string>Output Directory</string>
-              </property>
-             </widget>
-            </item>
             <item row="2" column="1">
              <widget class="ctkPathLineEdit" name="outputPathLineEdit">
               <property name="label">
@@ -375,6 +340,13 @@ QCheckBox::indicator:checked
               </property>
               <property name="showHistoryButton">
                <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_4">
+              <property name="text">
+               <string>Output Mesh</string>
               </property>
              </widget>
             </item>
@@ -425,10 +397,45 @@ QCheckBox::indicator:checked
               </property>
              </widget>
             </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_50">
+              <property name="toolTip">
+               <string>This folder is also used for saving the temporary state. </string>
+              </property>
+              <property name="text">
+               <string>Output Directory</string>
+              </property>
+             </widget>
+            </item>
             <item row="0" column="0">
              <widget class="QLabel" name="label">
               <property name="text">
                <string>Input Skeleton</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QCheckBox" name="meshVisibilityCheckbox">
+              <property name="styleSheet">
+               <string notr="true">QCheckBox::indicator:unchecked
+  {
+    image: url(&quot;:Icons/VisibleOff.png&quot;);
+  }
+
+QCheckBox::indicator:checked
+  {
+    image: url(&quot;:Icons/VisibleOn.png&quot;);
+  }</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="ctkColorPickerButton" name="inputSkeletonColorPickerButton">
+              <property name="displayColorName">
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -1421,6 +1428,29 @@ p, li { white-space: pre-wrap; }
  </widget>
  <customwidgets>
   <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerMarkupsPlaceWidget</class>
+   <extends>qSlicerWidget</extends>
+   <header>qSlicerMarkupsPlaceWidget.h</header>
+  </customwidget>
+  <customwidget>
    <class>ctkVTKDataSetArrayComboBox</class>
    <extends>QComboBox</extends>
    <header>ctkVTKDataSetArrayComboBox.h</header>
@@ -1461,29 +1491,6 @@ p, li { white-space: pre-wrap; }
    <class>ctkSliderWidget</class>
    <extends>QWidget</extends>
    <header>ctkSliderWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLNodeComboBox</class>
-   <extends>QWidget</extends>
-   <header>qMRMLNodeComboBox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLWidget</class>
-   <extends>QWidget</extends>
-   <header>qMRMLWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qSlicerWidget</class>
-   <extends>QWidget</extends>
-   <header>qSlicerWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qSlicerMarkupsPlaceWidget</class>
-   <extends>qSlicerWidget</extends>
-   <header>qSlicerMarkupsPlaceWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

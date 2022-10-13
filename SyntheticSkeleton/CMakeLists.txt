@@ -8,7 +8,9 @@ set(MODULE_PYTHON_SCRIPTS
   SyntheticSkeletonLib/__init__
   SyntheticSkeletonLib/Constants
   SyntheticSkeletonLib/CustomData
+  SyntheticSkeletonLib/SkeletonModel
   SyntheticSkeletonLib/Utils
+  SyntheticSkeletonLib/SyntheticSkeletonSubjectHierarchyPlugin
   )
 
 set(MODULE_PYTHON_RESOURCES
@@ -19,6 +21,7 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/assign-icon.png
   Resources/Icons/flip-icon.png
   Resources/Icons/triangulate-icon.png
+  Resources/Icons/triangle-icon.png
   )
 
 #-----------------------------------------------------------------------------

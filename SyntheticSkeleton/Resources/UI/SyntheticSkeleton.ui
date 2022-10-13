@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>575</width>
-    <height>1232</height>
+    <height>1237</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -291,25 +291,14 @@ QCheckBox::indicator:checked
          <layout class="QGridLayout" name="gridLayout_12">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_11">
-            <item row="0" column="2">
-             <widget class="QCheckBox" name="skeletonVisibilityCheckbox">
-              <property name="styleSheet">
-               <string notr="true">QCheckBox::indicator:unchecked
-  {
-    image: url(&quot;:Icons/VisibleOff.png&quot;);
-  }
-
-QCheckBox::indicator:checked
-  {
-    image: url(&quot;:Icons/VisibleOn.png&quot;);
-  }</string>
-              </property>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_4">
               <property name="text">
-               <string/>
+               <string>Output Mesh</string>
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
+            <item row="2" column="1">
              <widget class="qMRMLNodeComboBox" name="outputModelSelector">
               <property name="nodeTypes">
                <stringlist>
@@ -327,47 +316,14 @@ QCheckBox::indicator:checked
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
-             <widget class="ctkPathLineEdit" name="outputPathLineEdit">
-              <property name="label">
-               <string/>
-              </property>
-              <property name="filters">
-               <set>ctkPathLineEdit::Dirs|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
-              </property>
-              <property name="settingKey">
-               <string>SynthethicSkeletonExportOutputDir</string>
-              </property>
-              <property name="showHistoryButton">
-               <bool>false</bool>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="0">
-             <widget class="QLabel" name="label_4">
+             <widget class="QLabel" name="label">
               <property name="text">
-               <string>Output Mesh</string>
+               <string>Input Skeleton</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_9">
-              <property name="text">
-               <string>Autosave (state)</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QCheckBox" name="autoSaveCheckbox">
-              <property name="toolTip">
-               <string>Automatically saving temporary file</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
+            <item row="1" column="1">
              <widget class="qMRMLNodeComboBox" name="inputModelSelector">
               <property name="toolTip">
                <string>Pick Voronoi Surface</string>
@@ -393,28 +349,18 @@ QCheckBox::indicator:checked
                <bool>false</bool>
               </property>
               <property name="noneDisplay">
-               <string>Select Skeleton</string>
+               <string>Select Voronoi Skeleton</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_50">
-              <property name="toolTip">
-               <string>This folder is also used for saving the temporary state. </string>
-              </property>
-              <property name="text">
-               <string>Output Directory</string>
+            <item row="1" column="3">
+             <widget class="ctkColorPickerButton" name="inputSkeletonColorPickerButton">
+              <property name="displayColorName">
+               <bool>false</bool>
               </property>
              </widget>
             </item>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label">
-              <property name="text">
-               <string>Input Skeleton</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="2">
+            <item row="2" column="2">
              <widget class="QCheckBox" name="meshVisibilityCheckbox">
               <property name="styleSheet">
                <string notr="true">QCheckBox::indicator:unchecked
@@ -432,16 +378,77 @@ QCheckBox::indicator:checked
               </property>
              </widget>
             </item>
-            <item row="0" column="3">
-             <widget class="ctkColorPickerButton" name="inputSkeletonColorPickerButton">
-              <property name="displayColorName">
+            <item row="1" column="2">
+             <widget class="QCheckBox" name="skeletonVisibilityCheckbox">
+              <property name="styleSheet">
+               <string notr="true">QCheckBox::indicator:unchecked
+  {
+    image: url(&quot;:Icons/VisibleOff.png&quot;);
+  }
+
+QCheckBox::indicator:checked
+  {
+    image: url(&quot;:Icons/VisibleOn.png&quot;);
+  }</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_15">
+              <property name="text">
+               <string>Synthetic Skeleton</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="qMRMLNodeComboBox" name="syntheticSkeletonNodeSelector">
+              <property name="toolTip">
+               <string>Select synthetic skeleton node</string>
+              </property>
+              <property name="nodeTypes">
+               <stringlist>
+                <string>vtkMRMLScriptedModuleNode</string>
+               </stringlist>
+              </property>
+              <property name="showHidden">
+               <bool>true</bool>
+              </property>
+              <property name="showChildNodeTypes">
                <bool>false</bool>
+              </property>
+              <property name="baseName">
+               <string>SyntheticSkeleton</string>
+              </property>
+              <property name="noneEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="addEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="removeEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="renameEnabled">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
            </layout>
           </item>
          </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame_4">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
         </widget>
        </item>
        <item>
@@ -520,7 +527,7 @@ QCheckBox::indicator:checked
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Note: You can press and hold key 'a' to actively place points.  For view rotation,  just release the key.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Note: You can press and hold key 's' to actively place points.  For view rotation,  just release the key.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
              </item>
@@ -677,6 +684,96 @@ p, li { white-space: pre-wrap; }
              <enum>QFrame::Raised</enum>
             </property>
             <layout class="QGridLayout" name="gridLayout_5">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>Current Label:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2" colspan="2">
+              <widget class="QPushButton" name="flipNormalsButton">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                 <horstretch>1</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>Flip Triangle Normals.  Shortcut `f`.</string>
+               </property>
+               <property name="layoutDirection">
+                <enum>Qt::LeftToRight</enum>
+               </property>
+               <property name="text">
+                <string>(F)lip Normals</string>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>48</width>
+                 <height>48</height>
+                </size>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <widget class="QPushButton" name="assignTriangleButton">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                 <horstretch>1</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>Assign triangle(s) with selected label.  Shortcut `a`.</string>
+               </property>
+               <property name="text">
+                <string>(A)ssign Label</string>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>48</width>
+                 <height>48</height>
+                </size>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1" colspan="3">
+              <widget class="qMRMLNodeComboBox" name="triangleLabelSelector">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="nodeTypes">
+                <stringlist>
+                 <string>vtkMRMLScriptedModuleNode</string>
+                </stringlist>
+               </property>
+               <property name="showHidden">
+                <bool>true</bool>
+               </property>
+               <property name="noneEnabled">
+                <bool>true</bool>
+               </property>
+               <property name="renameEnabled">
+                <bool>true</bool>
+               </property>
+               <property name="selectNodeUponCreation">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
              <item row="1" column="1">
               <widget class="QSpinBox" name="triangleIndexSpinbox">
                <property name="enabled">
@@ -690,10 +787,31 @@ p, li { white-space: pre-wrap; }
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_6">
+             <item row="2" column="2" colspan="2">
+              <widget class="QPushButton" name="deleteTriangleButton">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                 <horstretch>1</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>Delete triangle(s) by clicking into its center.  Shortcut `d`.</string>
+               </property>
                <property name="text">
-                <string>Anatomical Index:</string>
+                <string>(D)elete Triangles</string>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>48</width>
+                 <height>48</height>
+                </size>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
                </property>
               </widget>
              </item>
@@ -704,6 +822,13 @@ p, li { white-space: pre-wrap; }
                </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>Anatomical Index:</string>
                </property>
               </widget>
              </item>
@@ -760,124 +885,6 @@ p, li { white-space: pre-wrap; }
                 </size>
                </property>
                <property name="checkable">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0" colspan="2">
-              <widget class="QPushButton" name="assignTriangleButton">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                 <horstretch>1</horstretch>
-                 <verstretch>1</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="toolTip">
-                <string>Assign triangle(s) with selected label.</string>
-               </property>
-               <property name="text">
-                <string>Assign</string>
-               </property>
-               <property name="iconSize">
-                <size>
-                 <width>48</width>
-                 <height>48</height>
-                </size>
-               </property>
-               <property name="checkable">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="2" colspan="2">
-              <widget class="QPushButton" name="deleteTriangleButton">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                 <horstretch>1</horstretch>
-                 <verstretch>1</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="toolTip">
-                <string>Delete triangle(s) by clicking into its center.</string>
-               </property>
-               <property name="text">
-                <string>Delete</string>
-               </property>
-               <property name="iconSize">
-                <size>
-                 <width>48</width>
-                 <height>48</height>
-                </size>
-               </property>
-               <property name="checkable">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="2" colspan="2">
-              <widget class="QPushButton" name="flipNormalsButton">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                 <horstretch>1</horstretch>
-                 <verstretch>1</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="toolTip">
-                <string>Flip Triangle Normals</string>
-               </property>
-               <property name="layoutDirection">
-                <enum>Qt::LeftToRight</enum>
-               </property>
-               <property name="text">
-                <string>Flip</string>
-               </property>
-               <property name="iconSize">
-                <size>
-                 <width>48</width>
-                 <height>48</height>
-                </size>
-               </property>
-               <property name="checkable">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>Current Label:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1" colspan="3">
-              <widget class="qMRMLNodeComboBox" name="triangleLabelSelector">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="nodeTypes">
-                <stringlist>
-                 <string>vtkMRMLScriptedModuleNode</string>
-                </stringlist>
-               </property>
-               <property name="showHidden">
-                <bool>true</bool>
-               </property>
-               <property name="noneEnabled">
-                <bool>true</bool>
-               </property>
-               <property name="renameEnabled">
-                <bool>true</bool>
-               </property>
-               <property name="selectNodeUponCreation">
                 <bool>true</bool>
                </property>
               </widget>
@@ -1137,28 +1144,6 @@ p, li { white-space: pre-wrap; }
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="labelPoint">
-              <property name="minimumSize">
-               <size>
-                <width>111</width>
-                <height>24</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <weight>50</weight>
-                <bold>false</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Total Number of Points</string>
-              </property>
-              <property name="scaledContents">
-               <bool>false</bool>
-              </property>
-             </widget>
-            </item>
             <item row="4" column="2">
              <widget class="QLabel" name="triangleNumberLabel">
               <property name="minimumSize">
@@ -1175,6 +1160,28 @@ p, li { white-space: pre-wrap; }
               </property>
               <property name="text">
                <string>0</string>
+              </property>
+              <property name="scaledContents">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="labelPoint">
+              <property name="minimumSize">
+               <size>
+                <width>111</width>
+                <height>24</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <weight>50</weight>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Total Number of Points</string>
               </property>
               <property name="scaledContents">
                <bool>false</bool>
@@ -1358,6 +1365,19 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
+       <item row="7" column="0" colspan="2">
+        <widget class="Line" name="line_11">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
        <item row="8" column="0">
         <widget class="QCheckBox" name="inflateModelCheckbox">
          <property name="text">
@@ -1384,7 +1404,17 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="10" column="0" colspan="2">
+       <item row="12" column="0">
+        <widget class="QLabel" name="label_50">
+         <property name="toolTip">
+          <string>This folder is also used for saving the temporary state. </string>
+         </property>
+         <property name="text">
+          <string>Output Directory</string>
+         </property>
+        </widget>
+       </item>
+       <item row="14" column="0" colspan="2">
         <widget class="QPushButton" name="saveButton">
          <property name="enabled">
           <bool>false</bool>
@@ -1394,8 +1424,24 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="7" column="0" colspan="2">
-        <widget class="Line" name="line_11">
+       <item row="12" column="1">
+        <widget class="ctkPathLineEdit" name="outputPathLineEdit">
+         <property name="label">
+          <string/>
+         </property>
+         <property name="filters">
+          <set>ctkPathLineEdit::Dirs|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
+         </property>
+         <property name="settingKey">
+          <string>SynthethicSkeletonExportOutputDir</string>
+         </property>
+         <property name="showHistoryButton">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0" colspan="2">
+        <widget class="Line" name="line">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -1404,6 +1450,27 @@ p, li { white-space: pre-wrap; }
          </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="1">
+        <widget class="QComboBox" name="coordinateSystemCombobox">
+         <item>
+          <property name="text">
+           <string>RAS</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>LPS</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="11" column="0">
+        <widget class="QLabel" name="label_9">
+         <property name="text">
+          <string>Coordinate System</string>
          </property>
         </widget>
        </item>
@@ -1427,29 +1494,6 @@ p, li { white-space: pre-wrap; }
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>qMRMLNodeComboBox</class>
-   <extends>QWidget</extends>
-   <header>qMRMLNodeComboBox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qMRMLWidget</class>
-   <extends>QWidget</extends>
-   <header>qMRMLWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qSlicerWidget</class>
-   <extends>QWidget</extends>
-   <header>qSlicerWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>qSlicerMarkupsPlaceWidget</class>
-   <extends>qSlicerWidget</extends>
-   <header>qSlicerMarkupsPlaceWidget.h</header>
-  </customwidget>
   <customwidget>
    <class>ctkVTKDataSetArrayComboBox</class>
    <extends>QComboBox</extends>
@@ -1491,6 +1535,29 @@ p, li { white-space: pre-wrap; }
    <class>ctkSliderWidget</class>
    <extends>QWidget</extends>
    <header>ctkSliderWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLNodeComboBox</class>
+   <extends>QWidget</extends>
+   <header>qMRMLNodeComboBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLWidget</class>
+   <extends>QWidget</extends>
+   <header>qMRMLWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerWidget</class>
+   <extends>QWidget</extends>
+   <header>qSlicerWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qSlicerMarkupsPlaceWidget</class>
+   <extends>qSlicerWidget</extends>
+   <header>qSlicerMarkupsPlaceWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -1556,22 +1623,6 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>171</x>
      <y>1075</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>SyntheticSkeleton</sender>
-   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
-   <receiver>inputModelSelector</receiver>
-   <slot>setMRMLScene(vtkMRMLScene*)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>443</x>
-     <y>733</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>482</x>
-     <y>81</y>
     </hint>
    </hints>
   </connection>
@@ -1684,6 +1735,22 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>337</x>
      <y>487</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>SyntheticSkeleton</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>inputModelSelector</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>443</x>
+     <y>733</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>482</x>
+     <y>81</y>
     </hint>
    </hints>
   </connection>

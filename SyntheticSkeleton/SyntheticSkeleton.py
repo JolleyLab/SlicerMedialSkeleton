@@ -5,9 +5,8 @@ from SyntheticSkeletonLib.Constants import *
 from SyntheticSkeletonLib.Utils import *
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
-from dataclasses import astuple
-from SyntheticSkeletonLib.Utils import getSortedPointIndices
 from pathlib import Path
+from SyntheticSkeletonLib.SyntheticSkeletonSubjectHierarchyPlugin import SyntheticSkeletonSubjectHierarchyPlugin
 
 
 #
@@ -28,7 +27,6 @@ class SyntheticSkeleton(ScriptedLoadableModule):
     self.parent.contributors = ["Christian Herz (CHOP), Nicolas Vergnat (PICSL/UPenn), Abdullah Aly (PICSL/UPenn), "
                                 "Sijie Tian (PICSL/UPenn), Andras Lasso (PerkLab), Paul Yushkevich (PICSL/UPenn), "
                                 "Alison Pouch (PICSL/UPenn), Matt Jolley (CHOP/UPenn)"]
-    # TODO: update with short description of the module and a link to online module documentation
     self.parent.helpText = """
 This module provides functionality for creating a synthetic skeleton which is based on a Voronoi surface.
 """
@@ -47,6 +45,14 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
   """
 
   @property
+  def syntheticSkeletonModel(self):
+    return self.logic.syntheticSkeletonModel
+
+  @syntheticSkeletonModel.setter
+  def syntheticSkeletonModel(self, node):
+    self.logic.syntheticSkeletonModel = node
+
+  @property
   def parameterNode(self):
     if not hasattr(self, "_parameterNode"):
       self._parameterNode = None
@@ -59,7 +65,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self._parameterNode = inputParameterNode
     if self.parameterNode is not None:
       if self.parameterNode.GetParameterCount() == 0:
-        self.logic.setDefaultParameters(self.parameterNode)
+        self.logic.setDefaultParameters(self._parameterNode)
       self.addObserver(self.parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
 
     # Initial GUI update
@@ -72,31 +78,28 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)  # needed for parameter node observation
     self._updatingGUIFromParameterNode = False
+    self.shortcuts = []
 
   def onReload(self):
     self.cleanup()
     logging.debug(f"Reloading {self. moduleName}")
-    reload(packageName='SyntheticSkeletonLib', submoduleNames=['Constants', 'Utils', 'CustomData'])
+    reload(packageName='SyntheticSkeletonLib', submoduleNames=['SkeletonModel', 'Constants', 'Utils', 'CustomData'])
     ScriptedLoadableModuleWidget.onReload(self)
 
   def cleanup(self):
     """
     Called when the application closes and the module widget is destroyed.
     """
-    self.removeAutoSaveTimer()
     self.removeObservers()
     self.deactivateModes()
-    self.logic.removeObservers()
+    self.removeShortcutKeys()
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     self.initializeUI()
-
     self.logic = SyntheticSkeletonLogic()
 
-    self.timer = None
-
-    self._selectedPoints = [] # (markupsNode.GetID(), pointIdx)
+    self._selectedPoints = [] # (markupsNode.GetID(), pointID)
 
     # These connections ensure that we update parameter node when scene is closed
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
@@ -105,13 +108,16 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self._observations = []
     self.threeDViewClickObserver = None
     self.endPlacementObserver =  None
-    self.placePointsShortcutObserver = None
 
     self.configureUI()
     self.setupConnections()
 
     # Make sure parameter node is initialized (needed for module reload)
     self.initializeParameterNode()
+    self.installShortcutKeys()
+
+    scriptedPlugin = slicer.qSlicerSubjectHierarchyScriptedPlugin(None)
+    scriptedPlugin.setPythonSource(SyntheticSkeletonSubjectHierarchyPlugin.filePath)
 
   def initializeUI(self):
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/SyntheticSkeleton.ui'))
@@ -122,6 +128,11 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
   def configureUI(self):
     self.ui.outputModelSelector.enabled = False
 
+    self.ui.syntheticSkeletonNodeSelector.setNodeTypeLabel(self.moduleName, "vtkMRMLScriptedModuleNode")
+    self.ui.syntheticSkeletonNodeSelector.addAttribute("vtkMRMLScriptedModuleNode", "ModuleName", self.moduleName)
+    self.ui.syntheticSkeletonNodeSelector.addAttribute("vtkMRMLScriptedModuleNode", "Type", self.moduleName+"Node")
+    self.ui.syntheticSkeletonNodeSelector.setMRMLScene(slicer.mrmlScene)
+
     # only use fiducial nodes created in this module
     self.ui.pointLabelSelector.addAttribute("vtkMRMLMarkupsFiducialNode", "ModuleName", self.moduleName)
 
@@ -131,10 +142,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.triangleLabelSelector.addAttribute("vtkMRMLScriptedModuleNode", "Type", "TriangleLabel")
 
     # set icons
-    self.ui.flipNormalsButton.setIcon(qt.QIcon(self.resourcePath("Icons/flip-icon.png")))
-    self.ui.assignTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/assign-icon.png")))
     self.ui.placeTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/add-icon.png")))
     self.ui.deleteTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/delete-icon.png")))
+    self.ui.assignTriangleButton.setIcon(qt.QIcon(self.resourcePath("Icons/assign-icon.png")))
+    self.ui.flipNormalsButton.setIcon(qt.QIcon(self.resourcePath("Icons/flip-icon.png")))
 
     for pointType in TAG_TYPES:
       self.ui.pointTypeCombobox.addItem(pointType)
@@ -155,6 +166,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.ui.tabWidget.removeTab(0)
 
   def setupConnections(self):
+    self.ui.syntheticSkeletonNodeSelector.currentNodeChanged.connect(self.onSyntheticSkeletonNodeSelected)
     self.ui.outputPathLineEdit.currentPathChanged.connect(self.onOutputDirectoryChanged)
     self.ui.inputModelSelector.currentNodeChanged.connect(self.onInputModelChanged)
 
@@ -172,11 +184,11 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       lambda : self.onDeleteAssignOrFlipTriangleButtonChecked(self.ui.assignTriangleButton))
     self.ui.flipNormalsButton.toggled.connect(
       lambda : self.onDeleteAssignOrFlipTriangleButtonChecked(self.ui.flipNormalsButton))
+
     self.ui.skeletonVisibilityCheckbox.toggled.connect(
       lambda t: self.onModelVisibilityToggled(self.ui.inputModelSelector, t))
     self.ui.meshVisibilityCheckbox.toggled.connect(
       lambda t: self.onModelVisibilityToggled(self.ui.outputModelSelector, t))
-    self.ui.autoSaveCheckbox.toggled.connect(self.addAutoSaveTimer)
 
     self.ui.skeletonTransparencySlider.valueChanged.connect(self.onSkeletonTransparencySliderMoved)
     self.ui.meshTransparanceySlider.valueChanged.connect(self.onMeshTransparencySliderMoved)
@@ -188,11 +200,12 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.constantRadiusSpinbox.valueChanged.connect(lambda v: self.updateParameterNodeFromGUI())
     self.ui.inflateModelCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
     self.ui.inflateRadiusSpinbox.valueChanged.connect(lambda v: self.updateParameterNodeFromGUI())
-    self.ui.snapCheckbox.toggled.connect(lambda t: self.updateParameterNodeFromGUI())
+    self.ui.snapCheckbox.toggled.connect(self.onSnapCheckboxToggled)
     self.ui.inputSkeletonColorPickerButton.colorChanged.connect(self.onInputSkeletonColorChanged)
+    self.ui.coordinateSystemCombobox.activated.connect(lambda i: self.updateParameterNodeFromGUI())
 
     self.ui.loadBinaryImageButton.clicked.connect(
-      lambda: self.logic.readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath))
+      lambda: readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath))
 
     self.ui.decimationInputModelSelector.currentNodeChanged.connect(self.onDecimationInputModelChanged)
     self.ui.decimationOutputModelSelector.currentNodeChanged.connect(self.onDecimationOutputModelChanged)
@@ -210,14 +223,36 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     self.ui.activeScalarCombobox.connect("currentArrayChanged(vtkAbstractArray*)", self.onActiveScalarChanged)
 
+    self.ui.pointLabelSelector.nodeAddedByUser.connect(self.onPointLabelAdded)
+    self.ui.triangleLabelSelector.nodeAddedByUser.connect(self.onTriangleLabelAdded)
+
+    self.ui.pointLabelSelector.nodeAboutToBeRemoved.connect(self.onPointLabelRemoved)
+    self.ui.triangleLabelSelector.nodeAboutToBeRemoved.connect(self.onTriangleLabelRemoved)
+
+  def onPointLabelAdded(self, node):
+    self.syntheticSkeletonModel.addPointLabel(node)
+
+  def onTriangleLabelAdded(self, node):
+    self.syntheticSkeletonModel.addTriangleLabel(node)
+
+  def onPointLabelRemoved(self, node):
+    self.syntheticSkeletonModel.removePointLabel(node)
+
+  def onTriangleLabelRemoved(self, node):
+    self.syntheticSkeletonModel.removeTriangleLabel(node)
+
+  def onSnapCheckboxToggled(self, toggled):
+    markupsNode = self.ui.pointLabelSelector.currentNode()
+    if markupsNode is not None:
+      markupsNode.SetAttribute(ATTR_TO_SURFACE, str(toggled))
+      if toggled is True:
+        for ptIdx in range(markupsNode.GetNumberOfControlPoints()):
+          self.syntheticSkeletonModel.updatePoint(markupsNode, ptIdx)
+
   def onInputSkeletonColorChanged(self, color):
     node = self.ui.inputModelSelector.currentNode()
     if not node:
       return
-
-    def hex2rgb(hex):
-      from PIL import ImageColor
-      return np.array(ImageColor.getcolor(hex, "RGB")) / 255.0
 
     dnode = node.GetDisplayNode()
     if not dnode:
@@ -233,23 +268,54 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     if self.ui.markupsPlaceWidget.placeModeEnabled is True:
       self.ui.markupsPlaceWidget.placeModeEnabled = False
-    if self.placePointsShortcutObserver:
-      logging.info("removing shortcut observer")
-      slicer.util.mainWindow().removeEventFilter(self.placePointsShortcutObserver)
-      self.placePointsShortcutObserver = None
-
-  def exit(self):
-    """
-    Called each time the user opens a different module.
-    """
-    logging.info("exit")
-    self.deactivateModes()
-    self.removeAutoSaveTimer()
 
   def enter(self):
-    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE)) is True:
-      self.addAutoSaveTimer()
-    self.enableMarkupsPlaceWidget()
+    self.installShortcutKeys()
+
+  def exit(self):
+    self.removeShortcutKeys()
+    self.deactivateModes()
+
+  def installShortcutKeys(self):
+    logging.debug('installShortcutKeys')
+    self.removeShortcutKeys()
+    keysAndCallbacks = (
+      (qt.Qt.Key_A, self.onAssignTriangleKeyEvent),
+      (qt.Qt.Key_S, self.onPlacePointsKeyEvent),
+      (qt.Qt.Key_D, self.onDeleteTriangleKeyEvent),
+      (qt.Qt.Key_F, self.onFlipTriangleKeyEvent),
+      )
+    for key, callback in keysAndCallbacks:
+      observer = KeyboardShortcutObserver(key, callback)
+      slicer.util.mainWindow().installEventFilter(observer)
+      self.shortcuts.append(observer)
+
+  def removeShortcutKeys(self):
+    logging.debug('removeShortcutKeys')
+    for shortcut in self.shortcuts:
+      slicer.util.mainWindow().removeEventFilter(shortcut)
+    self.shortcuts = []
+
+  def onPlacePointsKeyEvent(self, pressed):
+    if self.ui.markupsPlaceWidget.enabled:
+      self.ui.markupsPlaceWidget.setPlaceModeEnabled(pressed)
+    else:
+      self.ui.markupsPlaceWidget.setPlaceModeEnabled(False)
+
+  def onAssignTriangleKeyEvent(self, pressed):
+    self.onTriangleKeyEvent(self.ui.assignTriangleButton, pressed)
+
+  def onDeleteTriangleKeyEvent(self, pressed):
+    self.onTriangleKeyEvent(self.ui.deleteTriangleButton, pressed)
+
+  def onFlipTriangleKeyEvent(self, pressed):
+    self.onTriangleKeyEvent(self.ui.flipNormalsButton, pressed)
+
+  def onTriangleKeyEvent(self, button, pressed):
+    if self.ui.triangleLabelSelector.currentNode() is not None:
+      button.setChecked(pressed)
+    else:
+      button.setChecked(False)
 
   def onSceneStartClose(self, caller, event):
     """
@@ -290,6 +356,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self._updatingGUIFromParameterNode = True
 
     # Update node selectors and sliders
+    self.ui.syntheticSkeletonNodeSelector.setCurrentNode(self.parameterNode.GetNodeReference(PARAM_SYNTHETIC_SKELETON))
     self.ui.inputModelSelector.setCurrentNode(self.parameterNode.GetNodeReference(PARAM_INPUT_MODEL))
     self.ui.pointLabelSelector.setCurrentNode(self.parameterNode.GetNodeReference(PARAM_CURRENT_POINT_LABEL_LIST))
     self.ui.triangleLabelSelector.setCurrentNode(self.parameterNode.GetNodeReference(PARAM_CURRENT_TRIANGLE_LABEL_LIST))
@@ -304,18 +371,20 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.inflateModelCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE))
     self.ui.inflateRadiusSpinbox.value = float(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS))
     self.ui.outputPathLineEdit.currentPath = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
-    self.ui.autoSaveCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_AUTO_SAVE))
-    self.ui.snapCheckbox.checked = slicer.util.toBool(self.parameterNode.GetParameter(PARAM_SNAP_POINTS_TO_SURFACE))
 
-    inputModel = self.logic.inputModel
+    inputModel = self.syntheticSkeletonModel.getInputModelNode() if self.syntheticSkeletonModel else None
     if inputModel is not None:
       self.ui.skeletonVisibilityCheckbox.setChecked(inputModel.GetDisplayVisibility())
       self.ui.skeletonTransparencySlider.setValue(inputModel.GetDisplayNode().GetOpacity())
 
-    outputModel = self.logic.outputModel
+    outputModel = self.syntheticSkeletonModel.getOutputModelNode() if self.syntheticSkeletonModel else None
     if outputModel is not None:
       self.ui.meshVisibilityCheckbox.setChecked(outputModel.GetDisplayVisibility())
-      self.ui.meshTransparanceySlider.setValue(outputModel.GetDisplayNode().GetOpacity())
+      if outputModel.GetDisplayNode():
+        self.ui.meshTransparanceySlider.setValue(outputModel.GetDisplayNode().GetOpacity())
+
+    coordinateSystem = self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_COORDINATE_SYSTEM)
+    self.ui.coordinateSystemCombobox.setCurrentIndex(self.ui.coordinateSystemCombobox.findText(coordinateSystem))
 
     # All the GUI updates are done
     self._updatingGUIFromParameterNode = False
@@ -330,6 +399,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       return
 
     wasModified = self.parameterNode.StartModify()  # Modify all properties in a single batch
+    self.parameterNode.SetNodeReferenceID(PARAM_SYNTHETIC_SKELETON, self.ui.syntheticSkeletonNodeSelector.currentNodeID)
     self.parameterNode.SetNodeReferenceID(PARAM_INPUT_MODEL, self.ui.inputModelSelector.currentNodeID)
     self.parameterNode.SetNodeReferenceID(PARAM_CURRENT_POINT_LABEL_LIST, self.ui.pointLabelSelector.currentNodeID)
     self.parameterNode.SetNodeReferenceID(PARAM_CURRENT_TRIANGLE_LABEL_LIST, self.ui.triangleLabelSelector.currentNodeID)
@@ -344,26 +414,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE, str(self.ui.inflateModelCheckbox.checked))
     self.parameterNode.SetParameter(PARAM_GRID_MODEL_INFLATE_RADIUS, str(self.ui.inflateRadiusSpinbox.value))
     self.parameterNode.SetParameter(PARAM_OUTPUT_DIRECTORY, self.ui.outputPathLineEdit.currentPath)
-    self.parameterNode.SetParameter(PARAM_AUTO_SAVE, str(self.ui.autoSaveCheckbox.checked))
     if self.ui.activeScalarCombobox.currentText != "":
       self.parameterNode.SetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME, self.ui.activeScalarCombobox.currentText)
-    self.parameterNode.SetParameter(PARAM_SNAP_POINTS_TO_SURFACE, str(self.ui.snapCheckbox.checked))
+    self.parameterNode.SetParameter(PARAM_OUTPUT_MODEL_COORDINATE_SYSTEM, self.ui.coordinateSystemCombobox.currentText)
     self.parameterNode.EndModify(wasModified)
-
-  @whenDoneCall(updateParameterNodeFromGUI)
-  def addAutoSaveTimer(self, checked):
-    self.removeAutoSaveTimer()
-    if checked and not self.timer:
-      self.timer = qt.QTimer()
-      self.timer.setInterval(60000)
-      self.timer.connect('timeout()', self.logic.saveAffixVTKFile)
-      self.timer.start()
-
-  def removeAutoSaveTimer(self):
-    if self.timer:
-      self.timer.stop()
-      self.timer.timeout.disconnect()
-      self.timer = None
 
   def onDecimateButtonClicked(self):
     parameters = {"inputModel": self.ui.decimationInputModelSelector.currentNode().GetID(),
@@ -414,23 +468,61 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
                                       self.ui.decimationOutputModelSelector.currentNode() is not None and
                                       self.ui.decimationReductionSliderWidget.value != 0)
 
-  def onInputModelChanged(self, node):
-    buttons = [self.ui.pointLabelsCollapsibleButton, self.ui.triangleLabelsCollapsibleButton]
-    if node and not node.GetPolyData().GetPointData().GetArray(SCALAR_RADIUS_NAME):
-      slicer.util.errorDisplay("No 'Radius' array found in point data. The selected model may not a Voronoi skeleton.")
-      self.ui.inputModelSelector.setCurrentNode(None)
+  def onSyntheticSkeletonNodeSelected(self, node):
+    logging.debug("Selected synthetic skeleton node: {0}".format(node.GetName() if node else "None"))
+    self.setSyntheticSkeletonNode(node)
+    self.enableWidgets([self.ui.inputModelSelector], node is not None)
+    self.enableWidgets([self.ui.pointLabelsCollapsibleButton, self.ui.triangleLabelsCollapsibleButton],
+                       self.ui.inputModelSelector.currentNode() is not None)
+
+  def setSyntheticSkeletonNode(self, node):
+    if self.syntheticSkeletonModel and self.syntheticSkeletonModel.getSyntheticSkeletonNode() == node:
       return
-    self.logic.inputModel = node
-    outputModel = self.logic.outputModel
-    self.ui.outputModelSelector.setCurrentNode(outputModel)
-    self.onOutputMeshModified(outputModel)
+
+    import SyntheticSkeletonLib
+    self.syntheticSkeletonModel = SyntheticSkeletonLib.getSyntheticSkeletonModel(node)
+
+    blockedUpdate(self.ui.inputModelSelector,
+                  self.syntheticSkeletonModel.getInputModelNode() if self.syntheticSkeletonModel else None)
+    self.updateInputModelColorPicker()
+    self.setAndObserveOutputModel()
+
+  def setAndObserveOutputModel(self):
+    outputModel = self.syntheticSkeletonModel.getOutputModelNode() if self.syntheticSkeletonModel else None
+    blockedUpdate(self.ui.outputModelSelector,
+                  self.syntheticSkeletonModel.getOutputModelNode() if self.syntheticSkeletonModel else None)
     if outputModel is not None:
+      self.onOutputMeshModified(outputModel)
       self.addObserver(outputModel, vtk.vtkCommand.ModifiedEvent, self.onOutputMeshModified)
     else:
       self.removeObservers(self.onOutputMeshModified)
+      self.updateMeshInformation()
 
-    self.enableWidgets(buttons, node is not None)
+  def onInputModelChanged(self, node):
+    if node and not node.GetPolyData().GetPointData().GetArray(SCALAR_RADIUS_NAME):
+      slicer.util.errorDisplay("No 'Radius' array found in point data. "
+                               "The selected model may not be a Voronoi skeleton.")
+      self.ui.inputModelSelector.setCurrentNode(None)
+      return
+
+    if self.syntheticSkeletonModel:
+      self.syntheticSkeletonModel.setInputModelNode(node)
+
+    self.updateInputModelColorPicker()
+    self.setAndObserveOutputModel()
+
+    self.enableWidgets([self.ui.pointLabelsCollapsibleButton, self.ui.triangleLabelsCollapsibleButton],
+                       node is not None)
     self.updateParameterNodeFromGUI()
+
+  def updateInputModelColorPicker(self):
+    node = self.ui.inputModelSelector.currentNode()
+    if node is None:
+      return
+    color = node.GetDisplayNode().GetColor()
+    wasBlocked = self.ui.inputSkeletonColorPickerButton.blockSignals(True)
+    self.ui.inputSkeletonColorPickerButton.setColor(qt.QColor(color[0] * 255, color[1] * 255, color[2] * 255))
+    self.ui.inputSkeletonColorPickerButton.blockSignals(wasBlocked)
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onActiveScalarChanged(self, array):
@@ -440,7 +532,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.onSubdivisionLevelChanged(self.ui.subLevelSpinbox.value)
 
   def configureActiveScalarBox(self):
-    outputModel = self.logic.outputModel
+    outputModel = self.ui.outputModelSelector.currentNode()
     wasBlocked = self.ui.activeScalarCombobox.blockSignals(True)
     self.ui.activeScalarCombobox.setDataSet(outputModel.GetPolyData() if outputModel else None)
     self.ui.activeScalarCombobox.blockSignals(wasBlocked)
@@ -452,72 +544,84 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
   def onOutputMeshModified(self, caller=None, event=None):
     if not self.ui.flipNormalsButton.checked:
       self.configureActiveScalarBox()
-    if caller is None:
+    self.updateMeshInformation()
+
+  def updateMeshInformation(self):
+    node = self.ui.outputModelSelector.currentNode()
+    if node is None or node.GetPolyData() is None:
       self.ui.pointNumberLabel.setText("")
       self.ui.triangleNumberLabel.setText("")
     else:
-      self.ui.pointNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPoints()))
-      self.ui.triangleNumberLabel.setText(str(caller.GetPolyData().GetNumberOfPolys()))
+      self.ui.pointNumberLabel.setText(str(node.GetPolyData().GetNumberOfPoints()))
+      self.ui.triangleNumberLabel.setText(str(node.GetPolyData().GetNumberOfPolys()))
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onPointLabelSelected(self, node):
-    self.enableWidgets([self.ui.pointTypeCombobox, self.ui.pointIndexSpinbox], node is not None)
+    logging.debug("onPointLabelSelected")
+    self.enableWidgets([self.ui.pointTypeCombobox, self.ui.pointIndexSpinbox, self.ui.snapCheckbox],
+                       node is not None)
 
     if not node:
       self.ui.pointTypeCombobox.setCurrentIndex(0)
       self.enableMarkupsPlaceWidget()
       return
 
-    self.logic.addMarkupNodesObserver(node)
-
     # type index
-    typeIndex = node.GetAttribute("TypeIndex")
+    typeIndex = node.GetAttribute(ATTR_TYPE_INDEX)
     if typeIndex:
       self.ui.pointTypeCombobox.setCurrentIndex(int(typeIndex))
     else:
       self.ui.pointTypeCombobox.setCurrentIndex(0)
 
     # anatomical index
-    anatomicalIndex = node.GetAttribute("AnatomicalIndex")
+    anatomicalIndex = node.GetAttribute(ATTR_ANATOMICAL_INDEX)
     if anatomicalIndex:
       self.ui.pointIndexSpinbox.setValue(int(anatomicalIndex))
     else:
       self.ui.pointIndexSpinbox.setValue(1)
       self.onPointAnatomicalIndexChanged(1)
 
+    # snapping
+    snapToSurface = node.GetAttribute(ATTR_TO_SURFACE)
+    if snapToSurface is not None:
+      wasBlocked = self.ui.snapCheckbox.blockSignals(True)
+      self.ui.snapCheckbox.checked = slicer.util.toBool(snapToSurface)
+      self.ui.snapCheckbox.blockSignals(wasBlocked)
+    else:
+      if not self.ui.snapCheckbox.checked:
+        self.ui.snapCheckbox.checked = True
+      else:
+        self.onSnapCheckboxToggled(True)
+    self.enableMarkupsPlaceWidget()
+
   def onPointTypeChanged(self, index):
+    logging.debug("onPointTypeChanged")
     pointLabelNode = self.ui.pointLabelSelector.currentNode()
     if not pointLabelNode:
       return
 
     if index != 0:
-      pointLabelNode.SetAttribute("TypeIndex", str(index))
+      pointLabelNode.SetAttribute(ATTR_TYPE_INDEX, str(index))
     else:
-      pointLabelNode.RemoveAttribute("TypeIndex")
+      pointLabelNode.RemoveAttribute(ATTR_TYPE_INDEX)
     self.enableMarkupsPlaceWidget()
 
   def onPointAnatomicalIndexChanged(self, value):
+    logging.debug("onPointAnatomicalIndexChanged")
     pointLabelNode = self.ui.pointLabelSelector.currentNode()
     if not pointLabelNode:
       return
 
-    pointLabelNode.SetAttribute("AnatomicalIndex", str(value))
+    pointLabelNode.SetAttribute(ATTR_ANATOMICAL_INDEX, str(value))
     self.enableMarkupsPlaceWidget()
 
   def enableMarkupsPlaceWidget(self):
     pointLabelNode = self.ui.pointLabelSelector.currentNode()
     self.ui.markupsPlaceWidget.setEnabled(
       pointLabelNode is not None and \
-      pointLabelNode.GetAttribute("TypeIndex") is not None and \
-      pointLabelNode.GetAttribute("AnatomicalIndex") is not None
+      pointLabelNode.GetAttribute(ATTR_TYPE_INDEX) is not None and \
+      pointLabelNode.GetAttribute(ATTR_ANATOMICAL_INDEX) is not None
     )
-    if self.ui.markupsPlaceWidget.enabled and not self.placePointsShortcutObserver:
-      self.placePointsShortcutObserver = \
-        KeyboardShortcutObserver(qt.Qt.Key_A, self.ui.markupsPlaceWidget.setPlaceModeEnabled)
-      slicer.util.mainWindow().installEventFilter(self.placePointsShortcutObserver)
-    else:
-      slicer.util.mainWindow().removeEventFilter(self.placePointsShortcutObserver)
-      self.placePointsShortcutObserver = None
 
   def enableWidgets(self, widgets, condition):
     for w in widgets:
@@ -525,6 +629,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onTriangleLabelSelected(self, node):
+    logging.debug("onTriangleLabelSelected")
     self.ui.placeTriangleButton.setEnabled(node is not None)
     buttons = [self.ui.placeTriangleButton, self.ui.deleteTriangleButton,
                self.ui.assignTriangleButton, self.ui.flipNormalsButton, self.ui.triangleColorPickerButton]
@@ -533,14 +638,14 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.deactivateModes()
       return
 
-    for lblIdx, triLabel in enumerate(self.logic.data.vectorLabelInfo):
-      if triLabel.mrmlNodeID == node.GetID():
+    for lblIdx, triLabel in enumerate(self.syntheticSkeletonModel.triangleLabels):
+      if triLabel.scriptedNode is node:
         wasBlocked = self.ui.triangleIndexSpinbox.blockSignals(True)
         self.ui.triangleIndexSpinbox.value = lblIdx + 1
         self.ui.triangleIndexSpinbox.blockSignals(wasBlocked)
         break
 
-    color = node.GetAttribute("Color")
+    color = node.GetAttribute(ATTR_COLOR)
     if color:
       self.ui.triangleColorPickerButton.setColor(qt.QColor(color))
     else:
@@ -549,11 +654,12 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.onTriangleColorChanged(color)
 
   def onTriangleColorChanged(self, color):
+    logging.debug("onTriangleColorChanged")
     triangleNode = self.ui.triangleLabelSelector.currentNode()
     if not triangleNode:
       return
 
-    triangleNode.SetAttribute("Color", str(color))
+    triangleNode.SetAttribute(ATTR_COLOR, str(color))
 
   def onModelVisibilityToggled(self, selector, toggled):
     node = selector.currentNode()
@@ -573,8 +679,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       dNode.SetOpacity(value)
 
   def onPointScaleSliderMoved(self, value):
-    for mn in self.logic.getAllMarkupNodes():
-      mn.GetDisplayNode().SetGlyphScale(value)
+    if self.syntheticSkeletonModel:
+      self.syntheticSkeletonModel.setGlyphScale(value)
 
   @whenDoneCall(updateParameterNodeFromGUI)
   def onOutputDirectoryChanged(self, path):
@@ -587,7 +693,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
         if not subdividedModel.GetDisplayNode():
           subdividedModel.CreateDefaultDisplayNodes()
 
-        outputModel = self.logic.outputModel
+        outputModel = self.syntheticSkeletonModel.getOutputModelNode()
         if outputModel:
           dispNode = outputModel.GetDisplayNode()
           arrayName = dispNode.GetActiveScalarArray().GetName()
@@ -612,18 +718,20 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.ui.deleteTriangleButton.setChecked(False)
     if checked and self.ui.assignTriangleButton.checked:
       self.ui.assignTriangleButton.setChecked(False)
+    if checked and self.ui.flipNormalsButton.checked:
+      self.ui.flipNormalsButton.setChecked(False)
 
     if checked:
-      self.addObserversForTriangleCreation()
+      self.addObserverForPlacingTriangles()
     else:
-      self.removeObserversForTriangleCreation()
+      self.removeObserverForPlacingTriangles()
 
-  def addObserversForTriangleCreation(self):
+  def addObserverForPlacingTriangles(self):
     for markupsNode in self.logic.getAllMarkupNodes():
       dNode = markupsNode.GetDisplayNode()
       self._observations.append([dNode, dNode.AddObserver(dNode.JumpToPointEvent, self.onTrianglePointSelected)])
 
-  def removeObserversForTriangleCreation(self):
+  def removeObserverForPlacingTriangles(self):
     for observedNode, observation in self._observations:
       observedNode.RemoveObserver(observation)
     self.clearSelection()
@@ -633,14 +741,14 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     markupsNode = caller.GetMarkupsNode()
     selected = markupsNode.GetNthControlPointSelected(pointIdx)
     markupsNode.SetNthControlPointSelected(pointIdx, not selected)
-    t = (markupsNode.GetID(), pointIdx)
+    t = (markupsNode.GetID(), markupsNode.GetNthControlPointID(pointIdx))
     if selected is False and t in self._selectedPoints:
       self._selectedPoints.remove(t)
     else:
       self._selectedPoints.append(t)
 
     if len(self._selectedPoints) > 1:
-      m = self.logic.preCheckConstraints(self._selectedPoints)
+      m = preCheckConstraints(self._selectedPoints)
       if m and confirmOrIgnoreDialog(m):
         self.clearLastSelection()
         return
@@ -648,7 +756,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
         if len(self._selectedPoints) == 3:
           try:
             nextPtIndices = \
-              self.logic.attemptToAddTriangle(self._selectedPoints, self.ui.triangleLabelSelector.currentNodeID)
+              self.syntheticSkeletonModel.attemptToAddTriangle(self._selectedPoints,
+                                                               self.ui.triangleLabelSelector.currentNode())
             logging.debug(nextPtIndices)
             if not nextPtIndices:
               self.clearSelection()
@@ -658,21 +767,27 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
                 if not selIdx in nextPtIndices:
                   delete.append(selIdx)
               for index in sorted(delete, reverse=True):
-                mnId, idx = self._selectedPoints[index]
+                mnId, ptId = self._selectedPoints[index]
                 del self._selectedPoints[index]
-                slicer.util.getNode(mnId).SetNthControlPointSelected(idx, True)
+                mn = slicer.util.getNode(mnId)
+                pIdx = mn.GetNthControlPointIndexByID(ptId)
+                mn.SetNthControlPointSelected(pIdx, True)
           except ValueError as exc:
             slicer.util.warningDisplay(exc, "Violation")
             self.clearLastSelection()
 
   def clearSelection(self):
-    for mnId, idx in self._selectedPoints:
-      slicer.util.getNode(mnId).SetNthControlPointSelected(idx, True)
+    for mnId, ptId in self._selectedPoints:
+      mn = slicer.util.getNode(mnId)
+      ptIdx = mn.GetNthControlPointIndexByID(ptId)
+      mn.SetNthControlPointSelected(ptIdx, True)
     self._selectedPoints.clear()
 
   def clearLastSelection(self):
-    mnId, idx = self._selectedPoints.pop(-1)
-    slicer.util.getNode(mnId).SetNthControlPointSelected(idx, True)
+    mnId, ptId = self._selectedPoints.pop(-1)
+    mn = slicer.util.getNode(mnId)
+    ptIdx = mn.GetNthControlPointIndexByID(ptId)
+    slicer.util.getNode(mnId).SetNthControlPointSelected(ptIdx, True)
 
   def checkButtonBlockSignals(self, button, checked):
     wasBlocked = button.blockSignals(True)
@@ -696,33 +811,35 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.checkButtonBlockSignals(self.ui.assignTriangleButton, False)
       self.checkButtonBlockSignals(self.ui.deleteTriangleButton, False)
 
-    modelNode = self.logic.outputModel
+    modelNode = self.syntheticSkeletonModel.getOutputModelNode()
     dnode = modelNode.GetDisplayNode()
     dnode.EdgeVisibilityOn()
     dnode.SetScalarVisibility(not self.ui.flipNormalsButton.checked)
 
     self.ui.activeScalarCombobox.setEnabled(not self.ui.flipNormalsButton.checked)
 
+    self.observeTriangleSelection(checked)
+
+    self.onOutputMeshModified()
+
+  def observeTriangleSelection(self, checked):
     try:
-      pointListNode = slicer.util.getNode("F")  # points will be selected at positions specified by this markups point list node
+      pointListNode = slicer.util.getNode("F")  # points selected at position specified by this markups point list node
       pointListNode.RemoveAllMarkups()
     except slicer.util.MRMLNodeNotFoundException:
       pointListNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "F")
     pointListNode.SetDisplayVisibility(False)
-
     interactionNode = slicer.app.applicationLogic().GetInteractionNode()
     selectionNode = slicer.app.applicationLogic().GetSelectionNode()
     selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
     selectionNode.SetActivePlaceNodeID(pointListNode.GetID())
-
     interactionNode.SwitchToPersistentPlaceMode()
     interactionNode.SetCurrentInteractionMode(interactionNode.Place if checked else interactionNode.Select)
-
     if checked:
       qt.QApplication.setOverrideCursor(qt.Qt.CrossCursor)
-
     buttons = [self.ui.assignTriangleButton, self.ui.deleteTriangleButton, self.ui.flipNormalsButton]
-    if any(b.checked is True for b in buttons) and self.threeDViewClickObserver is None and self.endPlacementObserver is None:
+    if any(b.checked is True for b in
+           buttons) and self.threeDViewClickObserver is None and self.endPlacementObserver is None:
       # Automatic update each time when a markup point is modified
       self.threeDViewClickObserver = \
         pointListNode.AddObserver(slicer.vtkMRMLMarkupsFiducialNode.PointPositionDefinedEvent, self.onTriangleSelection)
@@ -739,16 +856,14 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.endPlacementObserver = None
       slicer.mrmlScene.RemoveNode(pointListNode)
 
-    self.onOutputMeshModified()
-
   def onTriangleSelection(self, markupsNode=None, eventid=None):
-    for markupPoint in slicer.util.arrayFromMarkupsControlPoints(markupsNode):
+    for pos in slicer.util.arrayFromMarkupsControlPoints(markupsNode):
       if self.ui.assignTriangleButton.checked:
-        self.logic.assignTriangleLabel(markupPoint, self.ui.triangleLabelSelector.currentNodeID)
+        self.syntheticSkeletonModel.assignTriangleLabel(pos, self.ui.triangleLabelSelector.currentNode())
       elif self.ui.deleteTriangleButton.checked:
-        self.logic.attemptTriangleDeletion(markupPoint)
+        self.syntheticSkeletonModel.removeTriangle(pos)
       elif self.ui.flipNormalsButton.checked:
-        self.logic.flipTriangleNormal(markupPoint)
+        self.syntheticSkeletonModel.flipTriangleNormal(pos)
     markupsNode.RemoveAllControlPoints()
 
   def onEndTriangleSelectionEvent(self, caller=None, eventid=None):
@@ -759,71 +874,32 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 # SyntheticSkeletonLogic
 #
 
-class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
+class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic):
 
   @property
   def parameterNode(self):
     return self.getParameterNode()
 
   @property
+  def syntheticSkeletonModel(self):
+    return self._syntheticSkeletonModel
+
+  @syntheticSkeletonModel.setter
+  def syntheticSkeletonModel(self, node):
+    self._syntheticSkeletonModel = node
+
+  @property
   def inputModel(self):
-    mrmlNodeId = self.parameterNode.GetNodeReferenceID(PARAM_INPUT_MODEL)
-    if not mrmlNodeId:
-      return None
-    else:
-      return slicer.util.getNode(mrmlNodeId)
-
-  @inputModel.setter
-  def inputModel(self, node):
-    self.parameterNode.SetNodeReferenceID(PARAM_INPUT_MODEL, "" if node is None else node.GetID())
-    self.configurePointLocator(node)
-
-    if node:
-      outputModel = node.GetNodeReference(PARAM_OUTPUT_MODEL)
-      if not outputModel:  # create new output model
-        outputModel = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", f"{node.GetName()}_syn_skeleton")
-        node.SetNodeReferenceID(PARAM_OUTPUT_MODEL, outputModel.GetID())
-      polydata = node.GetPolyData()
-      customInfo = CustomInformation(polydata)
-      customInfo.readCustomData()
-      if customInfo.hasCustomData() is not None and len(list(self.getAllMarkupNodes())) == 0:
-        self.readCustomInformation(customInfo)
+    return self._syntheticSkeletonModel.getInputModelNode() if self._syntheticSkeletonModel else None
 
   @property
   def outputModel(self):
-    inputModel = self.inputModel
-    return inputModel.GetNodeReference(PARAM_OUTPUT_MODEL) if inputModel else None
+    return self._syntheticSkeletonModel.getOutputModelNode() if self._syntheticSkeletonModel else None
 
   def __init__(self):
-    VTKObservationMixin.__init__(self)
     ScriptedLoadableModuleLogic.__init__(self)
 
-    self.locator = None
-    self.data = CustomInformation()
-    self.pointArray = dict()
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
-    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
-    self.addSceneObservers()
-
-  def addSceneObservers(self):
-    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
-
-  def onSceneStartClose(self, caller, event):
-    self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-    self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
-    self.locator = None
-    self.data = CustomInformation()
-    self.pointArray = dict()
-
-  def onSceneEndClose(self, caller, event):
-    self.addSceneObservers()
-
-  def __del__(self):
-    pass
-
-  def resetData(self):
-    self.data = CustomInformation(self.inputModel.GetPolyData() if self.inputModel else None)
+    self._syntheticSkeletonModel = None
 
   def createParameterNode(self):
     parameterNode = ScriptedLoadableModuleLogic.createParameterNode(self)
@@ -835,607 +911,64 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
       if not parameterNode.GetParameter(paramName):
         parameterNode.SetParameter(paramName, str(paramDefaultValue))
 
-  def updateOutputMesh(self):
-    triangles = vtk.vtkCellArray()
-
-    meshPoly = vtk.vtkPolyData()
-    meshPoints = vtk.vtkPoints()
-    meshPoly.SetPoints(meshPoints)
-
-    for pt in self.data.vectorTagPoints:
-      meshPoints.InsertNextPoint(astuple(pt.pos))
-
-    radiusArray = vtk.vtkFloatArray()
-    radiusArray.SetName(SCALAR_RADIUS_NAME)
-    for pt in self.data.vectorTagPoints:
-      radiusArray.InsertNextValue(pt.radius)
-    meshPoly.GetPointData().AddArray(radiusArray)
-
-    labelArray = vtk.vtkFloatArray()
-    labelArray.SetName(SCALAR_POINT_ANATOMICAL_INDEX_NAME)
-    for pt in self.data.vectorTagPoints:
-      labelArray.InsertNextValue(pt.typeIndex)
-    meshPoly.GetPointData().AddArray(labelArray)
-
-    colorsArray = vtk.vtkUnsignedCharArray()
-    colorsArray.SetNumberOfComponents(3)
-    colorsArray.SetName(SCALAR_TRIANGLE_COLOR_NAME)
-
-    for tri in self.data.vectorTagTriangles:
-      triPtIds = self.data.triPtIds(tri)
-      triangle = vtk.vtkTriangle()
-      triangle.GetPointIds().SetId(0, triPtIds[0])
-      triangle.GetPointIds().SetId(1, triPtIds[1])
-      triangle.GetPointIds().SetId(2, triPtIds[2])
-      triangles.InsertNextCell(triangle)
-
-      color = qt.QColor(tri.label.labelColor)
-      colorsArray.InsertNextTuple3(color.red(), color.green(), color.blue())
-
-    fltArray8 = vtk.vtkFloatArray()
-    fltArray8.SetName(SCALAR_TRIANGLE_ANATOMICAL_INDEX_NAME)
-    for ti in self.data.vectorTagTriangles:
-      fltArray8.InsertNextValue(self.data.vectorLabelInfo.index(ti.label) + 1)
-    meshPoly.GetCellData().AddArray(fltArray8)
-
-    meshPoly.GetCellData().SetScalars(colorsArray)
-    meshPoly.SetPoints(meshPoints)
-    meshPoly.SetPolys(triangles)
-
-    self.outputModel.SetAndObservePolyData(meshPoly)
-
-  def configurePointLocator(self, node):
-    if node:
-      self.locator = vtk.vtkKdTreePointLocator()
-      self.locator.SetDataSet(node.GetPolyData())
-      self.locator.BuildLocator()
-    else:
-      self.locator = None
-
   def getAllMarkupNodes(self):
-    return filter(lambda node: node.GetAttribute('ModuleName') == self.moduleName,
-                  slicer.util.getNodesByClass('vtkMRMLMarkupsNode'))
-
-  def getAllTriangleNodes(self):
-    return filter(lambda node: node.GetAttribute('ModuleName') == self.moduleName and
-                               node.GetAttribute('Type') == "TriangleLabel",
-                  slicer.util.getNodesByClass('vtkMRMLScriptedModuleNode'))
-
-  def addMarkupNodesObserver(self, markupsNode):
-    self.addObserver(markupsNode, markupsNode.PointPositionDefinedEvent, self.onPointAdded)
-    self.addObserver(markupsNode, markupsNode.PointStartInteractionEvent, self.onPointInteractionStarted)
-    self.addObserver(markupsNode, markupsNode.PointEndInteractionEvent, self.onPointInteractionEnded)
-    self.addObserver(markupsNode, markupsNode.PointRemovedEvent, self.onPointRemoved)
-
-  def onDataModified(self):
-    self.updateOutputMesh()
-
-  @vtk.calldata_type(vtk.VTK_OBJECT)
-  def onNodeAdded(self, caller, event, node):
-    logging.debug(f"onNodeAdded {node.GetID()}")
-    if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
-        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "TriangleLabel":
-        self.onTriangleLabelAdded(node)
-    elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName:
-        self.onPointLabelAdded(node)
-
-  def onTriangleLabelAdded(self, node):
-    color = node.GetAttribute("Color")
-    color = qt.QColor(color) if color else qt.QColor(DEFAULT_TRIANGLE_COLOR)
-    self.data.vectorLabelInfo.append(
-      LabelTriangle(labelName=node.GetName(), labelColor=str(color), mrmlNodeID=node.GetID())
-    )
-    # logging.debug(self.data.vectorLabelInfo)
-    self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onTriangleModified)
-
-  def onPointLabelAdded(self, node):
-    dnode = node.GetDisplayNode()
-    if not dnode:
-      node.CreateDefaultDisplayNodes()
-      dnode = node.GetDisplayNode()
-    dnode.SetTextScale(0)
-    dnode.SetColor(DEFAULT_POINT_COLOR)
-    dnode.SetActiveColor(DEFAULT_POINT_COLOR)
-    dnode.SetPointLabelsVisibility(False)
-    dnode.SetPropertiesLabelVisibility(False)
-    dnode.SetGlyphScale(float(self.getParameterNode().GetParameter(PARAM_POINT_GLYPH_SIZE)))
-    color = dnode.GetSelectedColor()
-    anatomicalIndex = node.GetAttribute("AnatomicalIndex")
-    ti = TagInfo(
-      tagName=node.GetName(),
-      tagType=int(node.GetAttribute("TypeIndex") if node.GetAttribute("TypeIndex") else -1),
-      tagIndex=int(anatomicalIndex) if anatomicalIndex else "",
-      tagColor=Color(color[0] * 255, color[1] * 255, color[2] * 255),
-      mrmlNodeID=node.GetID()
-    )
-    self.data.vectorTagInfo.append(ti)
-    self.addObserver(node, vtk.vtkCommand.ModifiedEvent, self.onMarkupsNodeModified)
-
-  @vtk.calldata_type(vtk.VTK_OBJECT)
-  def onNodeRemoved(self, caller, event, node):
-    logging.debug(f"onNodeRemoved {node.GetID()}")
-    if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
-        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "TriangleLabel":
-        self.onTriangleLabelRemoved(node)
-    elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName:
-      self.onPointLabelRemoved(node)
-
-  def onTriangleLabelRemoved(self, node):
-    delete = []
-
-    for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
-      if triLabel.mrmlNodeID == node.GetID():
-        for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-          if tri.label == triLabel:
-            delete.append(triIdx)
-        del self.data.vectorLabelInfo[lblIdx]
-        break
-
-    for triIdx in sorted(delete, reverse=True):
-      del self.data.vectorTagTriangles[triIdx]
-
-    self.removeObserver(node, vtk.vtkCommand.ModifiedEvent, self.onTriangleModified)
-    self.generateEdges()
-    self.onDataModified()
-
-  def onPointLabelRemoved(self, node):
-    for idx in reversed(range(node.GetNumberOfControlPoints())):
-      self.onPointRemoved(node, "PointRemovedEvent", idx, callModified=False)
-    self.removeObserver(node, vtk.vtkCommand.ModifiedEvent, self.onMarkupsNodeModified)
-
-    for idx, ti in enumerate(self.data.vectorTagInfo):
-      if ti.mrmlNodeID == node.GetID():
-        del self.data.vectorTagInfo[idx]
-        break
-
-    self.generateEdges()
-    self.onDataModified()
-
-  def onTriangleModified(self, caller, event):
-    for tl in self.data.vectorLabelInfo:
-      if caller.GetID() == tl.mrmlNodeID:
-        tl.labelName = caller.GetName()
-        tl.labelColor = caller.GetAttribute("Color")
-        # logging.debug(self.data.vectorLabelInfo)
-        break
-    self.onDataModified()
-
-  def onMarkupsNodeModified(self, node, event):
-    for ti in self.data.vectorTagInfo:
-      if node.GetID() == ti.mrmlNodeID:
-        dnode = node.GetDisplayNode()
-        color = dnode.GetSelectedColor()
-        ti.tagName = node.GetName()
-        ti.tagType = int(node.GetAttribute("TypeIndex") if node.GetAttribute("TypeIndex") else -1)
-        ti.tagIndex = int(node.GetAttribute("AnatomicalIndex"))
-        ti.tagColor = Color(color[0] * 255, color[1] * 255, color[2] * 255)
-        # logging.debug(self.data.vectorTagInfo)
-        break
-    self.onDataModified()
-
-  def readCustomInformation(self, customInfo: CustomInformation):
-    self.resetData()
-    markupNodes = []
-    for ti in customInfo.vectorTagInfo:
-      n = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", ti.tagName)
-      n.SetAttribute("TypeIndex", str(ti.tagType))
-      n.SetAttribute("AnatomicalIndex", str(ti.tagIndex))
-      n.SetAttribute("ModuleName", self.moduleName)
-      dNode = n.GetDisplayNode()
-      dNode.SetSelectedColor([ti.tagColor.r / 255.0, ti.tagColor.g / 255.0, ti.tagColor.b / 255.0])
-      markupNodes.append(n)
-      self.onNodeAdded(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, n)
-      self.addMarkupNodesObserver(n)
-
-    for p in customInfo.vectorTagPoints:
-      pos = p.pos
-      mn = markupNodes[customInfo.vectorTagInfo.index(p.tag)]
-      mn.AddControlPoint(vtk.vtkVector3d(pos.x, pos.y, pos.z))
-
-    for tl in customInfo.vectorLabelInfo:
-      n = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScriptedModuleNode", tl.labelName)
-      n.SetAttribute("ModuleName", self.moduleName)
-      n.SetAttribute("Color", tl.labelColor)
-      n.SetAttribute("Type", "TriangleLabel")
-      self.onNodeAdded(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, n)
-
-    self.data.vectorTagTriangles = []
-    for srcTri in customInfo.vectorTagTriangles:
-      triIds = customInfo.triPtIds(srcTri)
-      tri = TagTriangle(
-        p1=self.data.vectorTagPoints[triIds[0]],
-        p2=self.data.vectorTagPoints[triIds[1]],
-        p3=self.data.vectorTagPoints[triIds[2]],
-        label=self.data.vectorLabelInfo[customInfo.vectorLabelInfo.index(srcTri.label)]
-      )
-      self.data.vectorTagTriangles.append(tri)
-
-    self.generateEdges()
-
-    for uniqueId, edge in self.data.vectorTagEdges.items():
-      assert uniqueId == pairNumber(edge.ptId1, edge.ptId2)
-
-    self.onDataModified()
-
-  def getClosestVertexAndRadius(self, pos):
-    assert self.locator is not None
-    vertexIdx = self.locator.FindClosestPoint(pos)
-    poly = self.locator.GetDataSet()
-    radiusArray = poly.GetPointData().GetArray(SCALAR_RADIUS_NAME)
-    return vertexIdx, radiusArray.GetValue(vertexIdx)
-
-  def onPointAdded(self, caller, event):
-    logging.debug("Point Added")
-    pointIdx = caller.GetNumberOfControlPoints()-1
-    pos = caller.GetNthControlPointPosition(pointIdx)
-    vertIdx, radius = self.getClosestVertexAndRadius(pos)
-    poly = self.inputModel.GetPolyData()
-    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_SNAP_POINTS_TO_SURFACE)):
-      caller.SetNthControlPointPosition(pointIdx, poly.GetPoints().GetPoint(vertIdx))
-
-    pt = TagPoint(
-      pos=Point(*pos),
-      radius=radius,
-      tag=self.data.getTagInfo(caller),
-      seq=vertIdx
-    )
-    logging.debug(f"New: {pt}")
-    self.data.vectorTagPoints.append(pt)
-    self.pointArray[(caller.GetID(), pointIdx)] = len(self.data.vectorTagPoints) - 1
-
-    self.onDataModified()
-
-  def onPointInteractionStarted(self, caller, event):
-    self.addObserver(caller, caller.PointModifiedEvent, self.onPointModified)
-
-  @vtk.calldata_type(vtk.VTK_INT)
-  def onPointModified(self, caller, event, pointIdx):
-    # logging.debug(f"modified event {caller.GetID}, {pointIdx}, {self.pointArray[(caller.GetID(), pointIdx)]}")
-
-    pointIdx = caller.GetDisplayNode().GetActiveControlPoint()
-    pos = caller.GetNthControlPointPosition(pointIdx)
-    pt = self.data.vectorTagPoints[self.pointArray[(caller.GetID(), pointIdx)]]
-    pt.pos = Point(*pos)
-    self.updateOutputMesh()
-
-  def onPointInteractionEnded(self, caller, event):
-    self.removeObserver(caller, caller.PointModifiedEvent, self.onPointModified)
-    pointIdx = caller.GetDisplayNode().GetActiveControlPoint()
-    pos = caller.GetNthControlPointPosition(pointIdx)
-    vertIdx, radius = self.getClosestVertexAndRadius(pos)
-    poly = self.locator.GetDataSet()
-    if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_SNAP_POINTS_TO_SURFACE)):
-      caller.SetNthControlPointPosition(pointIdx, poly.GetPoints().GetPoint(vertIdx))
-    pos = caller.GetNthControlPointPosition(pointIdx)
-
-    pt = self.data.vectorTagPoints[self.pointArray[(caller.GetID(), pointIdx)]]
-    pt.pos = Point(*pos)
-    pt.radius = radius
-    pt.seq = vertIdx
-
-    self.onDataModified()
-
-  @vtk.calldata_type(vtk.VTK_INT)
-  def onPointRemoved(self, caller, event, localPointIdx, callModified=True):
-    logging.debug(f"onPointRemoved: {caller.GetID()}, idx: {localPointIdx}")
-    try:
-      globPIdx = self.pointArray[(caller.GetID(), localPointIdx)]
-    except KeyError:
-      logging.debug("could not find point in global array")
-      return
-
-    # delete triangles
-    delete = []
-    pt = self.data.vectorTagPoints[globPIdx]
-    for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-      if pt in tri.points:
-        delete.append(triIdx)
-    for index in sorted(delete, reverse=True):
-      del self.data.vectorTagTriangles[index]
-
-    del self.data.vectorTagPoints[globPIdx]
-    del self.pointArray[(caller.GetID(), localPointIdx)]
-
-    # updating global array including global index and their local index if from the same markups list
-    newDict = dict()
-    for key, val in self.pointArray.items():
-      mnId, idx = key
-      if val > globPIdx:
-        val = val - 1
-      if mnId == caller.GetID() and idx > localPointIdx:
-        newDict[(mnId, idx-1)] = val
-      else:
-        newDict[key] =  val
-    self.pointArray = newDict
-
-    if callModified:
-      self.generateEdges()
-      self.onDataModified()
-
-  def generateEdges(self):
-    self.data.vectorTagEdges = OrderedDict()
-    for tri in self.data.vectorTagTriangles:
-      self.checkEdgeConstraints(self.data.triPtIds(tri))
-
-  def preCheckConstraints(self, points):
-    types = [TAG_TYPES[int(slicer.util.getNode(mn).GetAttribute("TypeIndex"))] for mn, pIdx in points]
-
-    if len(types) == 2 and all(t == EDGE_POINT for t in types):
-      return self.checkEdgePoints(points, 0, 1)
-
-    if len(types) == 3:
-      if all(t == EDGE_POINT for t in types):
-        return f"Cannot use three points of type '{EDGE_POINT}' to create triangle"
-      else: # not all are edge points
-        indices = [i for i, x in enumerate(types) if x == EDGE_POINT]
-        if len(indices) == 2:
-          return self.checkEdgePoints(points, indices[0], indices[1])
-    return ""
-
-  def checkEdgePoints(self, points, ptIdx1, ptIdx2):
-    m = ""
-    if points[ptIdx1][0] != points[ptIdx2][0]: # different point lists
-      return f"Cannot use edge points from different lists"
-
-    node = slicer.util.getNode(points[ptIdx1][0])
-    sortedIndices = getSortedPointIndices(slicer.util.arrayFromMarkupsControlPoints(node))
-    for ix, idx in enumerate(sortedIndices):
-      node.SetNthMarkupLabel(idx, f"{ix}")
-    pt1Idx = sortedIndices.index(points[ptIdx1][1])
-    pt2Idx = sortedIndices.index(points[ptIdx2][1])
-    nControlPoints = node.GetNumberOfControlPoints()
-    # taking care of case if first and last idx was selected (which are neighbors)
-    if not sorted([pt1Idx, pt2Idx]) == [0, nControlPoints - 1] and abs(pt1Idx - pt2Idx) != 1:
-      m = "Violation: Only directly neighboring edge points can be connected."
-    return m
-
-  def attemptToAddTriangle(self, selectedPoints, triLabelId):
-    for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
-      if triLabel.mrmlNodeID == triLabelId:
-        triPtIds = [self.pointArray[i] for i in selectedPoints]
-        tri = self.createTriangle(triPtIds, triLabel)
-        self.onDataModified()
-        nextTriPtIds = self.getNextTriPt(tri)
-        logging.debug(f"after {triPtIds}")
-        logging.debug(f"Next PT ids {nextTriPtIds}")
-        return [triPtIds.index(ptId) for ptId in nextTriPtIds]
-    raise ValueError("No valid triangle label found")
-
-  def isValidEdge(self, ptId1, ptId2):
-    edgeId12 = pairNumber(ptId1, ptId2)
-    edgeId21 = pairNumber(ptId1, ptId2)
-    if edgeId12 in self.data.vectorTagEdges.keys():
-      edge = self.data.vectorTagEdges[edgeId12]
-    elif edgeId21 in self.data.vectorTagEdges.keys():
-      edge = self.data.vectorTagEdges[edgeId21]
-    else:
-      cons = self.data.getEdgeConstraint(self.data.vectorTagPoints[ptId1], self.data.vectorTagPoints[ptId2])
-      edge = TagEdge(
-        ptId1=ptId1,
-        ptId2=ptId2,
-        seq=0,
-        numEdge=0,
-        constrain=cons
-      )
-
-    if edge.numEdge >= edge.constrain:
-      return False
-    return True
-
-  def getNextTriPt(self, tri):
-    triPtIds = self.data.triPtIds(tri)
-    if self.isValidEdge(triPtIds[1], triPtIds[2]):
-      return [triPtIds[1], triPtIds[2]]
-    elif self.isValidEdge(triPtIds[0], triPtIds[1]):
-      return [triPtIds[0], triPtIds[1]]
-    elif self.isValidEdge(triPtIds[0], triPtIds[2]):
-      return [triPtIds[0], triPtIds[2]]
-    else:
+    if not self.syntheticSkeletonModel:
       return []
-
-  def createTriangle(self, triPtIds, label):
-    logging.debug(f"ID {triPtIds}")
-
-    # CurvePointOrder
-    logging.debug(triPtIds)
-    triPtIds = self.checkNormal(triPtIds.copy())
-    logging.debug(triPtIds)
-    m = self.checkEdgeConstraints(triPtIds)
-    if m:
-      raise ValueError(m)
-
-    vectorTagPoints = self.data.vectorTagPoints
-
-    # Store the new triangle
-    tri = TagTriangle(
-      p1=vectorTagPoints[triPtIds[0]],
-      p2=vectorTagPoints[triPtIds[1]],
-      p3=vectorTagPoints[triPtIds[2]],
-      label=label
-    )
-
-    self.data.vectorTagTriangles.append(tri)
-    return tri
-
-  def checkEdgeConstraints(self, triPtIds):
-    edge1 = self.getOrCreateEdge(triPtIds[0], triPtIds[1])
-    if edge1.numEdge >= edge1.constrain:
-      return f"Edge number 1 already has {edge1.numEdge} connection(s) and can only have {edge1.constrain} connection(s) maximum."
-    edge2 = self.getOrCreateEdge(triPtIds[1], triPtIds[2])
-    if edge2.numEdge >= edge2.constrain:
-      return f"Edge number 2 already has {edge2.numEdge} connection(s) and can only have {edge2.constrain} connection(s) maximum."
-    edge3 = self.getOrCreateEdge(triPtIds[2], triPtIds[0])
-    if edge3.numEdge >= edge3.constrain:
-      return f"Edge number 3 already has {edge3.numEdge} connection(s) and can only have {edge3.constrain} connection(s) maximum."
-
-    edge1.increaseNumEdges()
-    edge2.increaseNumEdges()
-    edge3.increaseNumEdges()
-
-    return ""
-
-  def getOrCreateEdge(self, ptId1, ptId2):
-    edgeId = pairNumber(ptId1, ptId2)
-    try:
-      edge = self.data.vectorTagEdges[edgeId]
-    except KeyError:
-      vectorTagPoints = self.data.vectorTagPoints
-      cons = self.data.getEdgeConstraint(vectorTagPoints[ptId1], vectorTagPoints[ptId2])
-      edge = TagEdge(
-        ptId1=ptId1,
-        ptId2=ptId2,
-        seq=0,
-        numEdge=0,
-        constrain=cons
-      )
-      self.data.vectorTagEdges[edgeId] = edge
-    return edge
-
-  def assignTriangleLabel(self, pos, triLabelId: str):
-    if not self.outputModel:
-      return
-    poly = self.outputModel.GetPolyData()
-
-    for lblIdx, triLabel in enumerate(self.data.vectorLabelInfo):
-      if triLabel.mrmlNodeID == triLabelId:
-        for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-          if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
-            tri.label = triLabel
-            self.onDataModified()
-            break
-        break
-    return "No valid triangle label found"
-
-  def attemptTriangleDeletion(self, pos):
-    if not self.outputModel:
-      return
-    poly = self.outputModel.GetPolyData()
-
-    for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-      if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
-        del self.data.vectorTagTriangles[triIdx]
-        break
-    self.generateEdges()
-    self.onDataModified()
-
-  def flipTriangleNormal(self, pos):
-    if not self.outputModel:
-      return
-    poly = self.outputModel.GetPolyData()
-
-    for triIdx, tri in enumerate(self.data.vectorTagTriangles):
-      if poly.GetCell(triIdx).PointInTriangle(pos, astuple(tri.p1.pos), astuple(tri.p2.pos), astuple(tri.p3.pos), 0.1):
-        # flip the 2nd and 3rd vertices
-        tempPos = tri.p2
-        tri.p2 = tri.p3
-        tri.p3 = tempPos
-        break
-    self.onDataModified()
-
-  def deletePointIdxRelatedEdges(self, globPIdx):
-    delete = [key for key, ed in self.data.vectorTagEdges.items() if any(pId == globPIdx for pId in ed.edgPtIds)]
-    for key in delete:
-      del self.data.vectorTagEdges[key]
-
-  def checkNormal(self, triPtIds):
-    id1, id2, id3 = triPtIds
-
-    normalGenerator = vtk.vtkPolyDataNormals()
-    surface = slicer.util.getNode(self.getParameterNode().GetNodeReferenceID(PARAM_INPUT_MODEL))
-    normalGenerator.SetInputData(surface.GetPolyData())
-    normalGenerator.Update()
-    normalPolyData = normalGenerator.GetOutput()
-    normalDataFloat = normalPolyData.GetPointData().GetArray("Normals")
-
-    vectorTagPoints = self.data.vectorTagPoints
-
-    if normalDataFloat:
-      normal1 = [0, 0, 0]
-      normalDataFloat.GetTypedTuple(vectorTagPoints[id1].seq, normal1)
-      normal2 = [0, 0, 0]
-      normalDataFloat.GetTypedTuple(vectorTagPoints[id2].seq, normal2)
-      normal3 = [0, 0, 0]
-      normalDataFloat.GetTypedTuple(vectorTagPoints[id2].seq, normal3)
-
-      import numpy as np
-
-      normalAverage = np.array([
-        (normal1[0] + normal2[0] + normal3[0]) / 3.0,
-        (normal1[1] + normal2[1] + normal3[1]) / 3.0,
-        (normal1[2] + normal2[2] + normal3[2]) / 3.0
-      ])
-
-      d1 = np.array([
-        vectorTagPoints[id2].pos.x - vectorTagPoints[id1].pos.x,
-        vectorTagPoints[id2].pos.y - vectorTagPoints[id1].pos.y,
-        vectorTagPoints[id2].pos.z - vectorTagPoints[id1].pos.z
-      ])
-
-      d2 = np.array([
-        vectorTagPoints[id3].pos.x - vectorTagPoints[id2].pos.x,
-        vectorTagPoints[id3].pos.y - vectorTagPoints[id2].pos.y,
-        vectorTagPoints[id3].pos.z - vectorTagPoints[id2].pos.z
-      ])
-
-      result = [0.0, 0.0, 0.0]
-      vtk.vtkMath.Cross(d1, d2, result)
-      vtk.vtkMath.Normalize(result)
-      vtk.vtkMath.Normalize(normalAverage)
-
-      cos = vtk.vtkMath.Dot(result, normalAverage)
-
-      if cos < 0: # need to swap
-        tempid = triPtIds[1]
-        triPtIds[1] = triPtIds[2]
-        triPtIds[2] = tempid
-
-    return triPtIds
+    return [pointLabel.markupsNode for pointLabel in self.syntheticSkeletonModel.pointLabels]
 
   def save(self):
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
-    logging.info(f"Saving to directory: {outputDirectory}")
-    self.saveTriangulatedMesh()
-    self.saveAffixVTKFile("")
+    logging.debug(f"Saving to directory: {outputDirectory}")
+
+    coordinateSystem = self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_COORDINATE_SYSTEM)
+    coordinateSystemIndex = slicer.vtkMRMLModelStorageNode.GetCoordinateSystemFromString(coordinateSystem)
+    useRAS = coordinateSystemIndex == slicer.vtkMRMLModelStorageNode.CoordinateSystemRAS
+
+    self.saveTriangulatedMesh(useRAS)
+    self.saveAffixVTKFile()
     self.saveCMRepFile()
     subdividedModel = self.createSubdivideMesh()
+
     if subdividedModel:
-      slicer.util.saveNode(subdividedModel, str(Path(outputDirectory) / f"{subdividedModel.GetName()}.vtk"))
+      saveModel(subdividedModel, str(Path(outputDirectory) / f"{subdividedModel.GetName()}.vtk"), useRAS=useRAS)
       slicer.mrmlScene.RemoveNode(subdividedModel)
 
     if slicer.util.toBool(self.parameterNode.GetParameter(PARAM_GRID_MODEL_INFLATE)) is True:
       inflatedModel = self.createInflatedModel()
-      slicer.util.saveNode(inflatedModel, str(Path(outputDirectory) / f"{inflatedModel.GetName()}.vtk"))
+      saveModel(inflatedModel, str(Path(outputDirectory) / f"{inflatedModel.GetName()}.vtk"), useRAS=useRAS)
       slicer.mrmlScene.RemoveNode(inflatedModel)
 
-  def saveAffixVTKFile(self, suffix="Temp"):
+  def saveAffixVTKFile(self):
     if self.inputModel is None:
       return
 
+    from CustomData import CustomInformationWriter
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
-    writer = CustomInformationWriter(self.data)
-    out = f"{outputDirectory}/{self.inputModel.GetName()}{suffix}Affix.vtk"
-    logging.info(f"Saving file {out}")
+    writer = CustomInformationWriter(self.syntheticSkeletonModel)
+    out = f"{outputDirectory}/{self.inputModel.GetName()}Affix.vtk"
+    logging.debug(f"Saving file {out}")
     writer.writeCustomDataToFile(out)
 
-  def saveTriangulatedMesh(self):
+  def saveTriangulatedMesh(self, useRAS):
     outputModel = self.outputModel
     if outputModel is None:
       return
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
-    slicer.util.saveNode(outputModel, str(Path(outputDirectory) / f"{outputModel.GetName()}.vtk"))
+    saveModel(outputModel, str(Path(outputDirectory) / f"{outputModel.GetName()}.vtk"), useRAS=useRAS)
 
   def saveCMRepFile(self):
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     modelName = self.outputModel.GetName()
     outFile = Path(outputDirectory) / f"{modelName}.cmrep"
 
+    from collections import OrderedDict
     attrs = OrderedDict({
       "Grid.Type": self.parameterNode.GetParameter(PARAM_GRID_TYPE),
       "Grid.Model.SolverType": self.parameterNode.GetParameter(PARAM_GRID_MODEL_SOLVER_TYPE),
       "Grid.Model.Atom.SubdivisionLevel": self.parameterNode.GetParameter(PARAM_GRID_MODEL_ATOM_SUBDIVISION_LEVEL),
       "Grid.Model.Coefficient.FileName": f"{modelName}.vtk",
       "Grid.Model.Coefficient.FileType": "VTK",
-      "Grid.Model.nLabels": len(self.data.vectorLabelInfo)
+      "Grid.Model.nLabels": len(self.syntheticSkeletonModel.triangleLabels)
     })
 
     if self.parameterNode.GetParameter(PARAM_GRID_MODEL_SOLVER_TYPE) == "PDE":
@@ -1496,7 +1029,7 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     pos = [0.0, 0.0, 0.0]
     for i in range(subdivisionOutput.GetNumberOfPoints()):
       subdivisionOutput.GetPoint(i, pos)
-      _, radius = self.getClosestVertexAndRadius(pos)
+      _, radius = self.syntheticSkeletonModel.getClosestVertexAndRadius(pos)
       fltArray1.InsertNextValue(radius)
 
     pointdata.AddArray(fltArray1)
@@ -1508,18 +1041,6 @@ class SyntheticSkeletonLogic(VTKObservationMixin, ScriptedLoadableModuleLogic):
     outputModel.SetName(f"{self.inputModel.GetName()}_Subdivide")
     outputModel.SetAndObservePolyData(subdivisionOutput)
     return outputModel
-
-  def readBinaryImageAndConvertToModel(self, path):
-    segNode = None
-    try:
-      segNode = slicer.util.loadSegmentation(path)
-      segmentationsLogic = slicer.modules.segmentations.logic()
-      segmentationsLogic.ExportVisibleSegmentsToModels(segNode, 0)
-    except RuntimeError as exc:
-      slicer.util.errorDisplay(exc, "RuntimeError")
-    finally:
-      if segNode:
-        slicer.mrmlScene.RemoveNode(segNode)
 
 
 class KeyboardShortcutObserver(qt.QObject):

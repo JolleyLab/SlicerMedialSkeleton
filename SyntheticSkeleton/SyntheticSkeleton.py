@@ -229,8 +229,21 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.pointLabelSelector.nodeAddedByUser.connect(self.onPointLabelAdded)
     self.ui.triangleLabelSelector.nodeAddedByUser.connect(self.onTriangleLabelAdded)
 
-    self.ui.pointLabelSelector.nodeAboutToBeRemoved.connect(self.onPointLabelRemoved)
-    self.ui.triangleLabelSelector.nodeAboutToBeRemoved.connect(self.onTriangleLabelRemoved)
+    # self.ui.pointLabelSelector.nodeAboutToBeRemoved.connect(self.onPointLabelRemoved)
+    # self.ui.triangleLabelSelector.nodeAboutToBeRemoved.connect(self.onTriangleLabelRemoved)
+
+    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onNodeRemoved(self, caller, event, node):
+    logging.debug(f"onNodeRemoved {node.GetID()}")
+    if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
+        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "TriangleLabel" and \
+        node.GetAttribute('SyntheticSkeleton') == self.ui.syntheticSkeletonNodeSelector.currentNodeID:
+        self.onTriangleLabelRemoved(node)
+    elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName and \
+        node.GetAttribute('SyntheticSkeleton') == self.ui.syntheticSkeletonNodeSelector.currentNodeID:
+      self.onPointLabelRemoved(node)
 
   def onPointLabelAdded(self, node):
     self.syntheticSkeletonModel.addPointLabel(node)
@@ -477,10 +490,19 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.enableWidgets([self.ui.inputModelSelector], node is not None)
     self.enableWidgets([self.ui.pointLabelsCollapsibleButton, self.ui.triangleLabelsCollapsibleButton],
                        self.ui.inputModelSelector.currentNode() is not None)
+    if node is not None:
+      self.ui.triangleLabelSelector.addAttribute("vtkMRMLScriptedModuleNode", "SyntheticSkeleton", node.GetID())
+      self.ui.pointLabelSelector.addAttribute("vtkMRMLMarkupsFiducialNode", "SyntheticSkeleton", node.GetID())
+    else:
+      self.ui.triangleLabelSelector.removeAttribute("vtkMRMLScriptedModuleNode", "SyntheticSkeleton")
+      self.ui.pointLabelSelector.removeAttribute("vtkMRMLMarkupsFiducialNode", "SyntheticSkeleton")
 
   def setSyntheticSkeletonNode(self, node):
     if self.syntheticSkeletonModel and self.syntheticSkeletonModel.getSyntheticSkeletonNode() == node:
       return
+
+    self.ui.pointLabelSelector.setCurrentNode(None)
+    self.ui.triangleLabelSelector.setCurrentNode(None)
 
     import SyntheticSkeletonLib
     self.syntheticSkeletonModel = SyntheticSkeletonLib.getSyntheticSkeletonModel(node)

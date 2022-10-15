@@ -187,6 +187,7 @@ class SyntheticSkeletonModel(VTKObservationMixin):
     logging.debug(f"addPointLabel {markupsNode.GetName()}")
     pointLabel = PointLabel(markupsNode)
     self.pointLabels.append(pointLabel)
+    markupsNode.SetAttribute("SyntheticSkeleton", self.syntheticSkeletonNode.GetID())
     self.syntheticSkeletonNode.SetNthNodeReferenceID(ATTR_POINT_LABELS, len(self.pointLabels), markupsNode.GetID())
     self.moveNodeToFolder(markupsNode, subfolderName=ATTR_POINT_LABELS)
     self.addMarkupNodesObserver(markupsNode)
@@ -330,6 +331,7 @@ class SyntheticSkeletonModel(VTKObservationMixin):
 
   def addTriangleLabel(self, scriptedNode):
     self.triangleLabels.append(TriangleLabel(scriptedNode))
+    scriptedNode.SetAttribute("SyntheticSkeleton", self.syntheticSkeletonNode.GetID())
     self.syntheticSkeletonNode.SetNthNodeReferenceID(ATTR_TRIANGLE_LABELS, len(self.pointLabels), scriptedNode.GetID())
     if scriptedNode.GetHideFromEditors():
       scriptedNode.SetHideFromEditors(False)

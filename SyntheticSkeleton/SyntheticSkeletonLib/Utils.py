@@ -5,6 +5,13 @@ from SyntheticSkeletonLib.Constants import *
 import slicer
 
 
+def loadModel(filepath, coordinateSystem):
+  properties = {
+    'coordinateSystem': slicer.vtkMRMLModelStorageNode.GetCoordinateSystemFromString(coordinateSystem)
+  }
+  slicer.util.loadNodeFromFile(filepath, 'ModelFile', properties)
+
+
 def readBinaryImageAndConvertToModel(path):
   segNode = None
   try:

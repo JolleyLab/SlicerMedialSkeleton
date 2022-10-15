@@ -152,6 +152,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     tabWidget = self.ui.tabWidget
     tabBar = tabWidget.tabBar()
+    tabBar.setTabIcon(0, qt.QIcon(self.resourcePath('Icons/SyntheticSkeleton.png')))
     tabBar.setTabIcon(1, qt.QIcon(self.resourcePath('Icons/triangulate-icon.png')))
     tabBar.setTabIcon(2, tabWidget.style().standardIcon(qt.QStyle.SP_DialogSaveButton))
 
@@ -160,10 +161,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       tabWidget.widget(0).layout().addWidget(w)
       w.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Maximum)
       tabWidget.widget(0).layout().addStretch(1)
-      tabBar.setTabIcon(0, qt.QIcon(self.resourcePath('Icons/SyntheticSkeleton.png')))
     else:
       logging.warning("slicer.modules.skeletontool could not be found. The CLI widget will be hidden.")
-      self.ui.tabWidget.removeTab(0)
 
   def setupConnections(self):
     self.ui.syntheticSkeletonNodeSelector.currentNodeChanged.connect(self.onSyntheticSkeletonNodeSelected)
@@ -206,6 +205,10 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
     self.ui.loadBinaryImageButton.clicked.connect(
       lambda: readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath))
+
+    self.ui.loadModelButton.clicked.connect(
+      lambda: loadModel(self.ui.inputModelPathLineEdit.currentPath,
+                        self.ui.inputCoordinateSystemCombobox.currentText))
 
     self.ui.decimationInputModelSelector.currentNodeChanged.connect(self.onDecimationInputModelChanged)
     self.ui.decimationOutputModelSelector.currentNodeChanged.connect(self.onDecimationOutputModelChanged)

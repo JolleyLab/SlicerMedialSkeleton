@@ -120,6 +120,78 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupBox_3">
+         <property name="styleSheet">
+          <string notr="true">QGroupBox
+{
+    font-size: 18px;
+}</string>
+         </property>
+         <property name="title">
+          <string>Model Input</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_4">
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_19">
+            <property name="text">
+             <string>Coordinate System</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="inputCoordinateSystemCombobox">
+            <item>
+             <property name="text">
+              <string>RAS</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>LPS</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QPushButton" name="loadModelButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Load Model</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="ctkPathLineEdit" name="inputModelPathLineEdit">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="filters">
+             <set>ctkPathLineEdit::Executable|ctkPathLineEdit::Files|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>Input FIle</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QGroupBox" name="groupBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -291,75 +363,6 @@ QCheckBox::indicator:checked
          <layout class="QGridLayout" name="gridLayout_12">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_11">
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_4">
-              <property name="text">
-               <string>Output Mesh</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="qMRMLNodeComboBox" name="outputModelSelector">
-              <property name="nodeTypes">
-               <stringlist>
-                <string>vtkMRMLModelNode</string>
-               </stringlist>
-              </property>
-              <property name="noneEnabled">
-               <bool>true</bool>
-              </property>
-              <property name="renameEnabled">
-               <bool>true</bool>
-              </property>
-              <property name="noneDisplay">
-               <string>Output Mesh will be generated</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label">
-              <property name="text">
-               <string>Input Skeleton</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="qMRMLNodeComboBox" name="inputModelSelector">
-              <property name="toolTip">
-               <string>Pick Voronoi Surface</string>
-              </property>
-              <property name="nodeTypes">
-               <stringlist>
-                <string>vtkMRMLModelNode</string>
-               </stringlist>
-              </property>
-              <property name="showChildNodeTypes">
-               <bool>false</bool>
-              </property>
-              <property name="noneEnabled">
-               <bool>true</bool>
-              </property>
-              <property name="addEnabled">
-               <bool>false</bool>
-              </property>
-              <property name="removeEnabled">
-               <bool>false</bool>
-              </property>
-              <property name="selectNodeUponCreation">
-               <bool>false</bool>
-              </property>
-              <property name="noneDisplay">
-               <string>Select Voronoi Skeleton</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="3">
-             <widget class="ctkColorPickerButton" name="inputSkeletonColorPickerButton">
-              <property name="displayColorName">
-               <bool>false</bool>
-              </property>
-             </widget>
-            </item>
             <item row="2" column="2">
              <widget class="QCheckBox" name="meshVisibilityCheckbox">
               <property name="styleSheet">
@@ -375,6 +378,13 @@ QCheckBox::indicator:checked
               </property>
               <property name="text">
                <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_4">
+              <property name="text">
+               <string>Output Mesh</string>
               </property>
              </widget>
             </item>
@@ -396,10 +406,17 @@ QCheckBox::indicator:checked
               </property>
              </widget>
             </item>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_15">
+            <item row="1" column="0">
+             <widget class="QLabel" name="label">
               <property name="text">
-               <string>Synthetic Skeleton</string>
+               <string>Input Skeleton</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="3">
+             <widget class="ctkColorPickerButton" name="inputSkeletonColorPickerButton">
+              <property name="displayColorName">
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -433,6 +450,61 @@ QCheckBox::indicator:checked
               </property>
               <property name="renameEnabled">
                <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="qMRMLNodeComboBox" name="inputModelSelector">
+              <property name="toolTip">
+               <string>Pick Voronoi Surface</string>
+              </property>
+              <property name="nodeTypes">
+               <stringlist>
+                <string>vtkMRMLModelNode</string>
+               </stringlist>
+              </property>
+              <property name="showChildNodeTypes">
+               <bool>false</bool>
+              </property>
+              <property name="noneEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="addEnabled">
+               <bool>false</bool>
+              </property>
+              <property name="removeEnabled">
+               <bool>false</bool>
+              </property>
+              <property name="selectNodeUponCreation">
+               <bool>false</bool>
+              </property>
+              <property name="noneDisplay">
+               <string>Select Voronoi Skeleton</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="qMRMLNodeComboBox" name="outputModelSelector">
+              <property name="nodeTypes">
+               <stringlist>
+                <string>vtkMRMLModelNode</string>
+               </stringlist>
+              </property>
+              <property name="noneEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="renameEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="noneDisplay">
+               <string>Output Mesh will be generated</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_15">
+              <property name="text">
+               <string>Synthetic Skeleton</string>
               </property>
              </widget>
             </item>
@@ -1751,6 +1823,22 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>482</x>
      <y>81</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>inputModelPathLineEdit</sender>
+   <signal>validInputChanged(bool)</signal>
+   <receiver>loadModelButton</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>346</x>
+     <y>292</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>287</x>
+     <y>346</y>
     </hint>
    </hints>
   </connection>

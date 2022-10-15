@@ -100,7 +100,8 @@ class CustomInformationReader(object):
                         (p3.markupsNode.GetID(), p3.pointID)]
       self.skeletonModel.addTriangle(
         selectedPoints,
-        self.skeletonModel.triangleLabels[int(triDBL.GetValue(i + 15))]
+        self.skeletonModel.triangleLabels[int(triDBL.GetValue(i + 15))],
+        checkNormals=False
       )
 
 

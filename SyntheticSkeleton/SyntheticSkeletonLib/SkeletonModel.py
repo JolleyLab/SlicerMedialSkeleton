@@ -414,7 +414,7 @@ class SyntheticSkeletonModel(VTKObservationMixin):
         return self.addTriangle(selectedPoints, triLabel)
     raise ValueError("No valid triangle label found")
 
-  def addTriangle(self, selectedPoints, triangleLabel):
+  def addTriangle(self, selectedPoints, triangleLabel, checkNormals=True):
     points = [self.findPointByMarkupsNode(mn, ptId) for mn, ptId in selectedPoints]
     assert all(p is not None for p in points)
     selTriPtIds = [self.points.index(p) for p in points]
@@ -422,7 +422,10 @@ class SyntheticSkeletonModel(VTKObservationMixin):
 
     # CurvePointOrder
     logging.debug(selTriPtIds)
-    triPtIds = self.checkNormal(selTriPtIds.copy())
+    if checkNormals:
+      triPtIds = self.checkNormal(selTriPtIds.copy())
+    else:
+      triPtIds = selTriPtIds
     logging.debug(triPtIds)
     m = self.checkEdgeConstraints(triPtIds)
     if m:

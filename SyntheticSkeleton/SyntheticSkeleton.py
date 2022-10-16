@@ -338,6 +338,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     Called just before the scene is closed.
     """
     # Parameter node will be reset, do not use it anymore
+    self.deactivateModes()
     self.parameterNode = None
 
   def onSceneEndClose(self, caller, event):
@@ -561,7 +562,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     wasBlocked = self.ui.activeScalarCombobox.blockSignals(True)
     self.ui.activeScalarCombobox.setDataSet(outputModel.GetPolyData() if outputModel else None)
     self.ui.activeScalarCombobox.blockSignals(wasBlocked)
-    if outputModel is not None:
+    if outputModel is not None and self.parameterNode is not None:
       scalarIndex = \
         self.ui.activeScalarCombobox.findText(self.parameterNode.GetParameter(PARAM_OUTPUT_MODEL_SCALAR_NAME))
       self.ui.activeScalarCombobox.setCurrentIndex(scalarIndex)

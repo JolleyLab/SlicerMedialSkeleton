@@ -391,7 +391,7 @@ class SyntheticSkeletonModel(VTKObservationMixin):
     return None
 
   def onTriangleLabelModified(self, caller, event):
-    print("onTriangleLabelModified")
+    logging.debug("onTriangleLabelModified")
     self.updateOutputMesh()
 
   def updateTriangles(self):

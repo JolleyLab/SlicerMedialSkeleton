@@ -229,27 +229,26 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.pointLabelSelector.nodeAddedByUser.connect(self.onPointLabelAdded)
     self.ui.triangleLabelSelector.nodeAddedByUser.connect(self.onTriangleLabelAdded)
 
-    # self.ui.pointLabelSelector.nodeAboutToBeRemoved.connect(self.onPointLabelRemoved)
-    # self.ui.triangleLabelSelector.nodeAboutToBeRemoved.connect(self.onTriangleLabelRemoved)
-
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeRemoved(self, caller, event, node):
     logging.debug(f"onNodeRemoved {node.GetID()}")
-    if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and \
-        node.GetAttribute('ModuleName') == self.moduleName and node.GetAttribute('Type') == "TriangleLabel" and \
-        node.GetAttribute('SyntheticSkeleton') == self.ui.syntheticSkeletonNodeSelector.currentNodeID:
+    if isinstance(node, slicer.vtkMRMLScriptedModuleNode) and node.GetAttribute('ModuleName') == self.moduleName:
+      if node.GetAttribute('Type') == "TriangleLabel" and \
+           node.GetAttribute('SyntheticSkeleton') == self.ui.syntheticSkeletonNodeSelector.currentNodeID:
         self.onTriangleLabelRemoved(node)
-    elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and node.GetAttribute('ModuleName') == self.moduleName and \
-        node.GetAttribute('SyntheticSkeleton') == self.ui.syntheticSkeletonNodeSelector.currentNodeID:
-      self.onPointLabelRemoved(node)
+      elif isinstance(node, slicer.vtkMRMLMarkupsFiducialNode) and \
+          node.GetAttribute('SyntheticSkeleton') == self.ui.syntheticSkeletonNodeSelector.currentNodeID:
+        self.onPointLabelRemoved(node)
 
   def onPointLabelAdded(self, node):
     self.syntheticSkeletonModel.addPointLabel(node)
+    self.onPointLabelSelected(node)
 
   def onTriangleLabelAdded(self, node):
     self.syntheticSkeletonModel.addTriangleLabel(node)
+    self.onTriangleLabelSelected(node)
 
   def onPointLabelRemoved(self, node):
     self.syntheticSkeletonModel.removePointLabel(node)
@@ -349,7 +348,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     if self.parent.isEntered:
       self.initializeParameterNode()
 
-    logging.debug(self.parameterNode.GetParameterNames())
+    if self.parameterNode:
+      logging.debug(self.parameterNode.GetParameterNames())
 
   def initializeParameterNode(self):
     """

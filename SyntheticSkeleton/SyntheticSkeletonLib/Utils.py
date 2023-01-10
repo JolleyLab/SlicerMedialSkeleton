@@ -143,6 +143,7 @@ def getEdgeConstraint(point1, point2) -> int:
     return 2
   elif type1 == 1 and type2 == 1:  # branch points
     return 3
+  raise ValueError("Cannot check edge constraints. Please make sure that all point labels have a point type assigned.")
 
 
 def whenDoneCall(functionToCall):

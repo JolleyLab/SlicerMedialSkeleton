@@ -41,7 +41,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="iconSize">
       <size>
@@ -98,6 +98,16 @@
             <property name="filters">
              <set>ctkPathLineEdit::Executable|ctkPathLineEdit::Files|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
             </property>
+            <property name="showHistoryButton">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_22">
+            <property name="text">
+             <string>Input File:</string>
+            </property>
            </widget>
           </item>
           <item row="1" column="1">
@@ -134,7 +144,7 @@
           <item row="2" column="0">
            <widget class="QLabel" name="label_19">
             <property name="text">
-             <string>Coordinate System</string>
+             <string>Coordinate System:</string>
             </property>
            </widget>
           </item>
@@ -152,7 +162,30 @@
             </item>
            </widget>
           </item>
-          <item row="3" column="0" colspan="2">
+          <item row="1" column="1">
+           <widget class="ctkPathLineEdit" name="inputModelPathLineEdit">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="filters">
+             <set>ctkPathLineEdit::Executable|ctkPathLineEdit::Files|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
+            </property>
+            <property name="showHistoryButton">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>Input FIle:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
            <widget class="QPushButton" name="loadModelButton">
             <property name="enabled">
              <bool>false</bool>
@@ -165,26 +198,6 @@
             </property>
             <property name="text">
              <string>Load Model</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="ctkPathLineEdit" name="inputModelPathLineEdit">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="filters">
-             <set>ctkPathLineEdit::Executable|ctkPathLineEdit::Files|ctkPathLineEdit::NoDot|ctkPathLineEdit::NoDotDot|ctkPathLineEdit::Readable</set>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_20">
-            <property name="text">
-             <string>Input FIle</string>
             </property>
            </widget>
           </item>

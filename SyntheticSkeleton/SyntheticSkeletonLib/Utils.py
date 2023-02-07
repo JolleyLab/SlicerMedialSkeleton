@@ -9,7 +9,7 @@ def loadModel(filepath, coordinateSystem):
   properties = {
     'coordinateSystem': slicer.vtkMRMLModelStorageNode.GetCoordinateSystemFromString(coordinateSystem)
   }
-  slicer.util.loadNodeFromFile(filepath, 'ModelFile', properties)
+  return slicer.util.loadNodeFromFile(filepath, 'ModelFile', properties)
 
 
 def readBinaryImageAndConvertToModel(path):

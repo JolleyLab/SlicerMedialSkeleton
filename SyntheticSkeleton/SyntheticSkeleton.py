@@ -75,6 +75,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     """
     Called when the user opens the module the first time and the widget is initialized.
     """
+    self._skeletonToolWidget = None
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)  # needed for parameter node observation
     self._updatingGUIFromParameterNode = False
@@ -157,9 +158,9 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     tabBar.setTabIcon(2, tabWidget.style().standardIcon(qt.QStyle.SP_DialogSaveButton))
 
     if hasattr(slicer.modules, "skeletontool"):
-      w = slicer.modules.skeletontool.createNewWidgetRepresentation()
-      tabWidget.widget(0).layout().addWidget(w)
-      w.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Maximum)
+      self._skeletonToolWidget = slicer.modules.skeletontool.createNewWidgetRepresentation()
+      tabWidget.widget(0).layout().addWidget(self._skeletonToolWidget)
+      self._skeletonToolWidget.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Maximum)
       tabWidget.widget(0).layout().addStretch(1)
     else:
       logging.warning("slicer.modules.skeletontool could not be found. The CLI widget will be hidden.")
@@ -203,12 +204,8 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.inputSkeletonColorPickerButton.colorChanged.connect(self.onInputSkeletonColorChanged)
     self.ui.coordinateSystemCombobox.activated.connect(lambda i: self.updateParameterNodeFromGUI())
 
-    self.ui.loadBinaryImageButton.clicked.connect(
-      lambda: readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath))
-
-    self.ui.loadModelButton.clicked.connect(
-      lambda: loadModel(self.ui.inputModelPathLineEdit.currentPath,
-                        self.ui.inputCoordinateSystemCombobox.currentText))
+    self.ui.loadBinaryImageButton.clicked.connect(self.onLoadBinaryImageIntoModel)
+    self.ui.loadModelButton.clicked.connect(self.onLoadModelButtonClicked)
 
     self.ui.decimationInputModelSelector.currentNodeChanged.connect(self.onDecimationInputModelChanged)
     self.ui.decimationOutputModelSelector.currentNodeChanged.connect(self.onDecimationOutputModelChanged)
@@ -230,6 +227,15 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
     self.ui.triangleLabelSelector.nodeAddedByUser.connect(self.onTriangleLabelAdded)
 
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAboutToBeRemovedEvent, self.onNodeRemoved)
+
+  def onLoadBinaryImageIntoModel(self):
+    with slicer.util.tryWithErrorDisplay("Loading the selected file into a model failed."):
+      readBinaryImageAndConvertToModel(self.ui.inputImagePathLineEdit.currentPath)
+
+  def onLoadModelButtonClicked(self):
+    with slicer.util.tryWithErrorDisplay("Loading the selected file as a model failed."):
+      model = loadModel(self.ui.inputModelPathLineEdit.currentPath, self.ui.inputCoordinateSystemCombobox.currentText)
+      self.setSkeletonToolInputModel(model)
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeRemoved(self, caller, event, node):
@@ -457,6 +463,12 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.ui.decimationOutputModelSelector.setCurrentNode(None)
     self._updateDecimationVisibilityCheckboxes()
     self._updateDecimateButtonEnabled()
+    self.setSkeletonToolInputModel(node)
+
+  def setSkeletonToolInputModel(self, node):
+    if self._skeletonToolWidget is not None:
+      ui = slicer.util.childWidgetVariables(self._skeletonToolWidget)
+      ui.inputSurface.setCurrentNode(node)
 
   def onDecimationReductionSliderValueChanged(self):
     self._updateModelDecimationPolygonInfo()

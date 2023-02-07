@@ -753,11 +753,16 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
       self.removeObserverForPlacingTriangles()
 
   def addObserverForPlacingTriangles(self):
+    qt.QApplication.setOverrideCursor(qt.Qt.PointingHandCursor)
     for markupsNode in self.logic.getAllMarkupNodes():
+      setAllControlPointsLocked(markupsNode, True)
       dNode = markupsNode.GetDisplayNode()
       self._observations.append([dNode, dNode.AddObserver(dNode.JumpToPointEvent, self.onTrianglePointSelected)])
 
   def removeObserverForPlacingTriangles(self):
+    qt.QApplication.setOverrideCursor(qt.Qt.ArrowCursor)
+    for markupsNode in self.logic.getAllMarkupNodes():
+      setAllControlPointsLocked(markupsNode, False)
     for observedNode, observation in self._observations:
       observedNode.RemoveObserver(observation)
     self.clearSelection()

@@ -296,3 +296,8 @@ def confirmOrIgnoreDialog(message, title='Violation'):
   box = qt.QMessageBox(qt.QMessageBox.Question, title, message)
   box.setStandardButtons(qt.QMessageBox.Ok | qt.QMessageBox.Ignore)
   return box.exec_() == qt.QMessageBox.Ok
+
+
+def setAllControlPointsLocked(markupsNode, locked):
+  for idx in range(markupsNode.GetNumberOfControlPoints()):
+    markupsNode.SetNthControlPointLocked(idx, locked)

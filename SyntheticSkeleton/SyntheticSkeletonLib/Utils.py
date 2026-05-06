@@ -108,7 +108,7 @@ def checkEdgePoints(points, ptIdx1, ptIdx2):
   node = slicer.util.getNode(points[ptIdx1][0])
   sortedIndices = getSortedPointIndices(slicer.util.arrayFromMarkupsControlPoints(node))
   for ix, idx in enumerate(sortedIndices):
-    node.SetNthMarkupLabel(idx, f"{ix}")
+    node.SetNthControlPointLabel(idx, f"{ix}")
   mn1 = slicer.util.getNode(points[ptIdx1][0])
   mn2 = slicer.util.getNode(points[ptIdx2][0])
   pt1Idx = sortedIndices.index(mn1.GetNthControlPointIndexByID(points[ptIdx1][1]))
@@ -216,15 +216,13 @@ def getSortedPointIndices(rawPointsArray):
 
 
 def reload(packageName, submoduleNames):
-  import imp
-  f, filename, description = imp.find_module(packageName)
-  package = imp.load_module(packageName, f, filename, description)
+  import importlib
+  package = importlib.import_module(packageName)
   for submoduleName in submoduleNames:
-    f, filename, description = imp.find_module(submoduleName, package.__path__)
-    try:
-      imp.load_module(packageName + '.' + submoduleName, f, filename, description)
-    finally:
-      f.close()
+    fullName = f"{packageName}.{submoduleName}"
+    submodule = importlib.import_module(fullName)
+    importlib.reload(submodule)
+  importlib.reload(package)
 
 
 def getOrCreateModelNode(name):

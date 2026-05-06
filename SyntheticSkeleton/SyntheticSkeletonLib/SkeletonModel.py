@@ -185,6 +185,11 @@ class SyntheticSkeletonModel(VTKObservationMixin):
 
   def addPointLabel(self, markupsNode):
     logging.debug(f"addPointLabel {markupsNode.GetName()}")
+    for pointLabel in self.pointLabels:
+      if pointLabel.markupsNode == markupsNode:
+        # ref: https://github.com/Slicer/Slicer/issues/9143
+        return
+
     pointLabel = PointLabel(markupsNode)
     self.pointLabels.append(pointLabel)
     markupsNode.SetAttribute("SyntheticSkeleton", self.syntheticSkeletonNode.GetID())
@@ -330,6 +335,11 @@ class SyntheticSkeletonModel(VTKObservationMixin):
     self.updatePoint(caller, pointIdx)
 
   def addTriangleLabel(self, scriptedNode):
+    for triangleLabel in self.triangleLabels:
+      if triangleLabel.scriptedNode == scriptedNode:
+        # ref: https://github.com/Slicer/Slicer/issues/9143
+        return
+
     self.triangleLabels.append(TriangleLabel(scriptedNode))
     scriptedNode.SetAttribute("SyntheticSkeleton", self.syntheticSkeletonNode.GetID())
     self.syntheticSkeletonNode.SetNthNodeReferenceID(ATTR_TRIANGLE_LABELS, len(self.pointLabels), scriptedNode.GetID())

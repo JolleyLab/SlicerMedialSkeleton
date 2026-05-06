@@ -868,7 +868,7 @@ class SyntheticSkeletonWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
   def observeTriangleSelection(self, checked):
     try:
       pointListNode = slicer.util.getNode("F")  # points selected at position specified by this markups point list node
-      pointListNode.RemoveAllMarkups()
+      pointListNode.RemoveAllControlPoints()
     except slicer.util.MRMLNodeNotFoundException:
       pointListNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "F")
     pointListNode.SetDisplayVisibility(False)

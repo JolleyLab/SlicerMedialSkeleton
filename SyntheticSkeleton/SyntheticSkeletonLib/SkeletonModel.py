@@ -255,8 +255,10 @@ class SyntheticSkeletonModel(VTKObservationMixin):
     self.addPoint(caller, pointIdx)
 
   @vtk.calldata_type(vtk.VTK_INT)
-  def onPointRemoved(self, caller, event, localPointIdx, callModified=True):
+  def onPointRemoved(self, caller, event, localPointIdx=None, callModified=True):
     logging.debug(f"onPointRemoved: {caller.GetID()}, idx: {localPointIdx}")
+    if not localPointIdx:
+      return
     self.removeInvalidPoints()
 
     if callModified:

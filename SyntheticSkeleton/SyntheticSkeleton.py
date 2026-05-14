@@ -1,6 +1,5 @@
 import vtk, qt, slicer
 
-from SyntheticSkeletonLib.CustomData import *
 from SyntheticSkeletonLib.Constants import *
 from SyntheticSkeletonLib.Utils import *
 from slicer.ScriptedLoadableModule import *
@@ -986,7 +985,7 @@ class SyntheticSkeletonLogic(ScriptedLoadableModuleLogic):
     if self.inputModel is None:
       return
 
-    from CustomData import CustomInformationWriter
+    from SyntheticSkeletonLib.CustomData import CustomInformationWriter
     outputDirectory = self.parameterNode.GetParameter(PARAM_OUTPUT_DIRECTORY)
     writer = CustomInformationWriter(self.syntheticSkeletonModel)
     out = f"{outputDirectory}/{self.inputModel.GetName()}Affix.vtk"

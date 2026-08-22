@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) {
       m_tri(i,k) = vnew[i * 3 + k];
 
       // Get the coordinate of this vertex
-      m_pt.set_row(m_tri(i,k), P[k]);
+      m_pt.set_row(m_tri(i,k), P[k].data_block());
 
       // Add up the valence of this vertex
       valence[m_tri(i,k)]++;
